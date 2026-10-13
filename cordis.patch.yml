@@ -1,0 +1,7 @@
+# Bundle layer for the local design canvas plugin.
+# Mounts one Host row; the project registry lives in ~/.dsh/design-canvas.json
+# (optional override) merged over the built-in project list in store.js.
+- insert:
+    - id: design-canvas
+      name: '@local/dsh-design-canvas'
+      config: {}

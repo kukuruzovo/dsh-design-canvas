@@ -1,0 +1,1154 @@
+{
+  "format": "dsh-design-canvas",
+  "version": 1,
+  "id": "quiz-home",
+  "name": "QuizForge — Home",
+  "device": "mobile",
+  "createdAt": "2026-10-09T01:18:07.296Z",
+  "updatedAt": "2026-10-09T01:18:07.316Z",
+  "tokens": {
+    "color": {
+      "bg": "#0b0d10",
+      "surface": "#141a24",
+      "surfaceAlt": "#1b2230",
+      "border": "#2a313d",
+      "fg": "#e8eaed",
+      "fgMuted": "#9aa4b2",
+      "accent": "#5b8cff",
+      "accentFg": "#0b0d10",
+      "danger": "#ff5f56",
+      "success": "#3fb950"
+    },
+    "radius": {
+      "sm": 6,
+      "md": 12,
+      "lg": 20,
+      "pill": 999
+    },
+    "space": {
+      "xs": 4,
+      "sm": 8,
+      "md": 16,
+      "lg": 24,
+      "xl": 40
+    },
+    "font": {
+      "sans": "Inter, \"Segoe UI\", system-ui, sans-serif",
+      "mono": "ui-monospace, SFMono-Regular, Menlo, monospace"
+    },
+    "text": {
+      "h1": {
+        "size": 32,
+        "weight": 700,
+        "lineHeight": 1.15,
+        "letterSpacing": -0.5
+      },
+      "h2": {
+        "size": 24,
+        "weight": 650,
+        "lineHeight": 1.2,
+        "letterSpacing": -0.3
+      },
+      "body": {
+        "size": 15,
+        "weight": 400,
+        "lineHeight": 1.5,
+        "letterSpacing": 0
+      },
+      "caption": {
+        "size": 12,
+        "weight": 500,
+        "lineHeight": 1.4,
+        "letterSpacing": 0.2
+      }
+    },
+    "shadow": {
+      "card": {
+        "x": 0,
+        "y": 8,
+        "blur": 24,
+        "spread": 0,
+        "color": "rgba(0,0,0,0.45)"
+      },
+      "pop": {
+        "x": 0,
+        "y": 16,
+        "blur": 48,
+        "spread": -8,
+        "color": "rgba(0,0,0,0.6)"
+      }
+    }
+  },
+  "components": {
+    "topic-card": {
+      "key": "topic-card",
+      "name": "TopicCard",
+      "description": "Карточка темы викторины",
+      "node": {
+        "id": "fr_mv0a0m2y124sk7",
+        "type": "frame",
+        "name": "TopicCard",
+        "x": 0,
+        "y": 0,
+        "w": 350,
+        "h": 92,
+        "rotation": 0,
+        "visible": true,
+        "locked": false,
+        "style": {
+          "fill": "token:color.surface",
+          "stroke": null,
+          "radius": "token:radius.md",
+          "opacity": 1,
+          "shadow": "token:shadow.card",
+          "clip": false
+        },
+        "layout": {
+          "mode": "none",
+          "gap": 0,
+          "padding": {
+            "t": 0,
+            "r": 0,
+            "b": 0,
+            "l": 0
+          },
+          "align": "start",
+          "justify": "start"
+        },
+        "clip": true,
+        "children": [
+          {
+            "id": "rc_mv0a0m2y26yo7x",
+            "type": "rect",
+            "name": "CardIcon",
+            "x": 20,
+            "y": 24,
+            "w": 44,
+            "h": 44,
+            "rotation": 0,
+            "visible": true,
+            "locked": false,
+            "style": {
+              "fill": "token:color.accent",
+              "stroke": null,
+              "radius": "token:radius.sm",
+              "opacity": 1,
+              "shadow": null
+            },
+            "layout": {
+              "mode": "none",
+              "gap": 0,
+              "padding": {
+                "t": 0,
+                "r": 0,
+                "b": 0,
+                "l": 0
+              },
+              "align": "start",
+              "justify": "start"
+            }
+          },
+          {
+            "id": "tx_mv0a0m2y3kmzzl",
+            "type": "text",
+            "name": "CardTitle",
+            "x": 80,
+            "y": 22,
+            "w": 240,
+            "h": 28,
+            "rotation": 0,
+            "visible": true,
+            "locked": false,
+            "style": {
+              "fill": null,
+              "opacity": 1
+            },
+            "layout": {
+              "mode": "none",
+              "gap": 0,
+              "padding": {
+                "t": 0,
+                "r": 0,
+                "b": 0,
+                "l": 0
+              },
+              "align": "start",
+              "justify": "start"
+            },
+            "text": {
+              "value": "История",
+              "token": "text.h2",
+              "align": "left",
+              "valign": "top",
+              "color": "token:color.fg",
+              "size": null,
+              "weight": null,
+              "lineHeight": null,
+              "letterSpacing": null
+            }
+          },
+          {
+            "id": "tx_mv0a0m2y4jqu3o",
+            "type": "text",
+            "name": "CardMeta",
+            "x": 80,
+            "y": 52,
+            "w": 240,
+            "h": 22,
+            "rotation": 0,
+            "visible": true,
+            "locked": false,
+            "style": {
+              "fill": null,
+              "opacity": 1
+            },
+            "layout": {
+              "mode": "none",
+              "gap": 0,
+              "padding": {
+                "t": 0,
+                "r": 0,
+                "b": 0,
+                "l": 0
+              },
+              "align": "start",
+              "justify": "start"
+            },
+            "text": {
+              "value": "24 вопроса · 12 мин",
+              "token": "text.caption",
+              "align": "left",
+              "valign": "top",
+              "color": "token:color.fgMuted",
+              "size": null,
+              "weight": null,
+              "lineHeight": null,
+              "letterSpacing": null
+            }
+          }
+        ]
+      },
+      "props": {
+        "label": {
+          "type": "text",
+          "default": "Тема",
+          "description": "Название темы",
+          "target": "#CardTitle",
+          "property": "text.value"
+        },
+        "meta": {
+          "type": "text",
+          "default": "0 вопросов",
+          "description": "Подпись под названием",
+          "target": "#CardMeta",
+          "property": "text.value"
+        },
+        "tone": {
+          "type": "color",
+          "default": "token:color.accent",
+          "description": "Цвет иконки",
+          "target": "#CardIcon",
+          "property": "style.fill"
+        }
+      }
+    },
+    "button-primary": {
+      "key": "button-primary",
+      "name": "Button / Primary",
+      "description": "Основное действие экрана",
+      "node": {
+        "id": "fr_mv0a0m2z5bqvgs",
+        "type": "frame",
+        "name": "ButtonPrimary",
+        "x": 0,
+        "y": 0,
+        "w": 350,
+        "h": 52,
+        "rotation": 0,
+        "visible": true,
+        "locked": false,
+        "style": {
+          "fill": "token:color.accent",
+          "stroke": null,
+          "radius": "token:radius.pill",
+          "opacity": 1,
+          "shadow": null,
+          "clip": true
+        },
+        "layout": {
+          "mode": "horizontal",
+          "gap": 0,
+          "padding": {
+            "t": 0,
+            "r": 20,
+            "b": 0,
+            "l": 20
+          },
+          "align": "center",
+          "justify": "center"
+        },
+        "clip": true,
+        "children": [
+          {
+            "id": "tx_mv0a0m2z6qes4g",
+            "type": "text",
+            "name": "Label",
+            "x": 0,
+            "y": 0,
+            "w": 200,
+            "h": 24,
+            "rotation": 0,
+            "visible": true,
+            "locked": false,
+            "style": {
+              "fill": null,
+              "opacity": 1
+            },
+            "layout": {
+              "mode": "none",
+              "gap": 0,
+              "padding": {
+                "t": 0,
+                "r": 0,
+                "b": 0,
+                "l": 0
+              },
+              "align": "start",
+              "justify": "start"
+            },
+            "text": {
+              "value": "Начать викторину",
+              "token": "text.body",
+              "align": "center",
+              "valign": "middle",
+              "color": "token:color.accentFg",
+              "size": null,
+              "weight": null,
+              "lineHeight": null,
+              "letterSpacing": null
+            }
+          }
+        ]
+      },
+      "props": {
+        "label": {
+          "type": "text",
+          "default": "Начать викторину",
+          "description": "Текст подписи",
+          "target": "#Label",
+          "property": "text.value"
+        }
+      }
+    }
+  },
+  "root": {
+    "id": "root",
+    "type": "frame",
+    "name": "Canvas",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0,
+    "rotation": 0,
+    "visible": true,
+    "locked": true,
+    "style": {
+      "fill": null,
+      "stroke": null,
+      "radius": 0,
+      "opacity": 1,
+      "shadow": null
+    },
+    "layout": {
+      "mode": "none",
+      "gap": 0,
+      "padding": {
+        "t": 0,
+        "r": 0,
+        "b": 0,
+        "l": 0
+      },
+      "align": "start",
+      "justify": "start"
+    },
+    "clip": false,
+    "children": [
+      {
+        "id": "page",
+        "type": "frame",
+        "name": "Mobile",
+        "x": 0,
+        "y": 0,
+        "w": 390,
+        "h": 844,
+        "rotation": 0,
+        "visible": true,
+        "locked": false,
+        "style": {
+          "fill": "token:color.bg",
+          "stroke": null,
+          "radius": 0,
+          "opacity": 1,
+          "shadow": null
+        },
+        "layout": {
+          "mode": "none",
+          "gap": 0,
+          "padding": {
+            "t": 0,
+            "r": 0,
+            "b": 0,
+            "l": 0
+          },
+          "align": "start",
+          "justify": "start"
+        },
+        "clip": true,
+        "children": [
+          {
+            "id": "header",
+            "type": "frame",
+            "name": "Header",
+            "x": 0,
+            "y": 0,
+            "w": 390,
+            "h": 140,
+            "rotation": 0,
+            "visible": true,
+            "locked": false,
+            "style": {
+              "fill": "token:color.bg",
+              "stroke": null,
+              "radius": 0,
+              "opacity": 1,
+              "shadow": null,
+              "clip": false
+            },
+            "layout": {
+              "mode": "none",
+              "gap": 0,
+              "padding": {
+                "t": 0,
+                "r": 0,
+                "b": 0,
+                "l": 0
+              },
+              "align": "start",
+              "justify": "start"
+            },
+            "clip": true,
+            "children": [
+              {
+                "id": "headerTitle",
+                "type": "text",
+                "name": "HeaderTitle",
+                "x": 24,
+                "y": 56,
+                "w": 300,
+                "h": 44,
+                "rotation": 0,
+                "visible": true,
+                "locked": false,
+                "style": {
+                  "fill": null,
+                  "opacity": 1
+                },
+                "layout": {
+                  "mode": "none",
+                  "gap": 0,
+                  "padding": {
+                    "t": 0,
+                    "r": 0,
+                    "b": 0,
+                    "l": 0
+                  },
+                  "align": "start",
+                  "justify": "start"
+                },
+                "text": {
+                  "value": "Викторины",
+                  "token": "text.h1",
+                  "align": "left",
+                  "valign": "top",
+                  "color": "token:color.fg",
+                  "size": null,
+                  "weight": null,
+                  "lineHeight": null,
+                  "letterSpacing": null
+                }
+              },
+              {
+                "id": "headerSub",
+                "type": "text",
+                "name": "HeaderSub",
+                "x": 24,
+                "y": 100,
+                "w": 320,
+                "h": 24,
+                "rotation": 0,
+                "visible": true,
+                "locked": false,
+                "style": {
+                  "fill": null,
+                  "opacity": 1
+                },
+                "layout": {
+                  "mode": "none",
+                  "gap": 0,
+                  "padding": {
+                    "t": 0,
+                    "r": 0,
+                    "b": 0,
+                    "l": 0
+                  },
+                  "align": "start",
+                  "justify": "start"
+                },
+                "text": {
+                  "value": "Выбери тему и начни",
+                  "token": "text.body",
+                  "align": "left",
+                  "valign": "top",
+                  "color": "token:color.fgMuted",
+                  "size": null,
+                  "weight": null,
+                  "lineHeight": null,
+                  "letterSpacing": null
+                }
+              }
+            ]
+          },
+          {
+            "id": "card",
+            "type": "instance",
+            "name": "TopicCard",
+            "x": 20,
+            "y": 160,
+            "w": 350,
+            "h": 92,
+            "rotation": 0,
+            "visible": true,
+            "locked": false,
+            "style": {
+              "fill": "token:color.surfaceAlt",
+              "stroke": null,
+              "radius": 8,
+              "opacity": 1,
+              "shadow": null
+            },
+            "layout": {
+              "mode": "none",
+              "gap": 0,
+              "padding": {
+                "t": 0,
+                "r": 0,
+                "b": 0,
+                "l": 0
+              },
+              "align": "start",
+              "justify": "start"
+            },
+            "component": "topic-card",
+            "overrides": {},
+            "clip": false,
+            "children": []
+          },
+          {
+            "id": "cta",
+            "type": "instance",
+            "name": "Button / Primary",
+            "x": 20,
+            "y": 470,
+            "w": 350,
+            "h": 52,
+            "rotation": 0,
+            "visible": true,
+            "locked": false,
+            "style": {
+              "fill": "token:color.surfaceAlt",
+              "stroke": null,
+              "radius": 8,
+              "opacity": 1,
+              "shadow": null
+            },
+            "layout": {
+              "mode": "none",
+              "gap": 0,
+              "padding": {
+                "t": 0,
+                "r": 0,
+                "b": 0,
+                "l": 0
+              },
+              "align": "start",
+              "justify": "start"
+            },
+            "component": "button-primary",
+            "overrides": {},
+            "clip": false,
+            "children": []
+          },
+          {
+            "id": "tabbar",
+            "type": "frame",
+            "name": "TabBar",
+            "x": 0,
+            "y": 760,
+            "w": 390,
+            "h": 84,
+            "rotation": 0,
+            "visible": true,
+            "locked": false,
+            "style": {
+              "fill": "token:color.surface",
+              "stroke": null,
+              "radius": 0,
+              "opacity": 1,
+              "shadow": null,
+              "clip": true
+            },
+            "layout": {
+              "mode": "horizontal",
+              "gap": 0,
+              "padding": {
+                "t": 0,
+                "r": 32,
+                "b": 0,
+                "l": 32
+              },
+              "align": "center",
+              "justify": "space-between"
+            },
+            "clip": true,
+            "children": [
+              {
+                "id": "tab0",
+                "type": "frame",
+                "name": "Tab 1",
+                "x": 32,
+                "y": 20,
+                "w": 80,
+                "h": 44,
+                "rotation": 0,
+                "visible": true,
+                "locked": false,
+                "style": {
+                  "fill": null,
+                  "stroke": null,
+                  "radius": 0,
+                  "opacity": 1,
+                  "shadow": null,
+                  "clip": false
+                },
+                "layout": {
+                  "mode": "vertical",
+                  "gap": 4,
+                  "padding": {
+                    "t": 0,
+                    "r": 0,
+                    "b": 0,
+                    "l": 0
+                  },
+                  "align": "center",
+                  "justify": "center"
+                },
+                "clip": true,
+                "children": [
+                  {
+                    "id": "tab0Icon",
+                    "type": "ellipse",
+                    "name": "Icon",
+                    "x": 30,
+                    "y": 2,
+                    "w": 20,
+                    "h": 20,
+                    "rotation": 0,
+                    "visible": true,
+                    "locked": false,
+                    "style": {
+                      "fill": "token:color.accent",
+                      "opacity": 1
+                    },
+                    "layout": {
+                      "mode": "none",
+                      "gap": 0,
+                      "padding": {
+                        "t": 0,
+                        "r": 0,
+                        "b": 0,
+                        "l": 0
+                      },
+                      "align": "start",
+                      "justify": "start"
+                    }
+                  },
+                  {
+                    "id": "tab0Label",
+                    "type": "text",
+                    "name": "Label",
+                    "x": 0,
+                    "y": 26,
+                    "w": 80,
+                    "h": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "locked": false,
+                    "style": {
+                      "fill": null,
+                      "opacity": 1
+                    },
+                    "layout": {
+                      "mode": "none",
+                      "gap": 0,
+                      "padding": {
+                        "t": 0,
+                        "r": 0,
+                        "b": 0,
+                        "l": 0
+                      },
+                      "align": "start",
+                      "justify": "start"
+                    },
+                    "text": {
+                      "value": "Главная",
+                      "token": "text.caption",
+                      "align": "center",
+                      "valign": "top",
+                      "color": "token:color.fg",
+                      "size": null,
+                      "weight": null,
+                      "lineHeight": null,
+                      "letterSpacing": null
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "tab1",
+                "type": "frame",
+                "name": "Tab 2",
+                "x": 114,
+                "y": 20,
+                "w": 80,
+                "h": 44,
+                "rotation": 0,
+                "visible": true,
+                "locked": false,
+                "style": {
+                  "fill": null,
+                  "stroke": null,
+                  "radius": 0,
+                  "opacity": 1,
+                  "shadow": null,
+                  "clip": false
+                },
+                "layout": {
+                  "mode": "vertical",
+                  "gap": 4,
+                  "padding": {
+                    "t": 0,
+                    "r": 0,
+                    "b": 0,
+                    "l": 0
+                  },
+                  "align": "center",
+                  "justify": "center"
+                },
+                "clip": true,
+                "children": [
+                  {
+                    "id": "tab1Icon",
+                    "type": "ellipse",
+                    "name": "Icon",
+                    "x": 30,
+                    "y": 2,
+                    "w": 20,
+                    "h": 20,
+                    "rotation": 0,
+                    "visible": true,
+                    "locked": false,
+                    "style": {
+                      "fill": "token:color.border",
+                      "opacity": 1
+                    },
+                    "layout": {
+                      "mode": "none",
+                      "gap": 0,
+                      "padding": {
+                        "t": 0,
+                        "r": 0,
+                        "b": 0,
+                        "l": 0
+                      },
+                      "align": "start",
+                      "justify": "start"
+                    }
+                  },
+                  {
+                    "id": "tab1Label",
+                    "type": "text",
+                    "name": "Label",
+                    "x": 0,
+                    "y": 26,
+                    "w": 80,
+                    "h": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "locked": false,
+                    "style": {
+                      "fill": null,
+                      "opacity": 1
+                    },
+                    "layout": {
+                      "mode": "none",
+                      "gap": 0,
+                      "padding": {
+                        "t": 0,
+                        "r": 0,
+                        "b": 0,
+                        "l": 0
+                      },
+                      "align": "start",
+                      "justify": "start"
+                    },
+                    "text": {
+                      "value": "Темы",
+                      "token": "text.caption",
+                      "align": "center",
+                      "valign": "top",
+                      "color": "token:color.fgMuted",
+                      "size": null,
+                      "weight": null,
+                      "lineHeight": null,
+                      "letterSpacing": null
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "tab2",
+                "type": "frame",
+                "name": "Tab 3",
+                "x": 196,
+                "y": 20,
+                "w": 80,
+                "h": 44,
+                "rotation": 0,
+                "visible": true,
+                "locked": false,
+                "style": {
+                  "fill": null,
+                  "stroke": null,
+                  "radius": 0,
+                  "opacity": 1,
+                  "shadow": null,
+                  "clip": false
+                },
+                "layout": {
+                  "mode": "vertical",
+                  "gap": 4,
+                  "padding": {
+                    "t": 0,
+                    "r": 0,
+                    "b": 0,
+                    "l": 0
+                  },
+                  "align": "center",
+                  "justify": "center"
+                },
+                "clip": true,
+                "children": [
+                  {
+                    "id": "tab2Icon",
+                    "type": "ellipse",
+                    "name": "Icon",
+                    "x": 30,
+                    "y": 2,
+                    "w": 20,
+                    "h": 20,
+                    "rotation": 0,
+                    "visible": true,
+                    "locked": false,
+                    "style": {
+                      "fill": "token:color.border",
+                      "opacity": 1
+                    },
+                    "layout": {
+                      "mode": "none",
+                      "gap": 0,
+                      "padding": {
+                        "t": 0,
+                        "r": 0,
+                        "b": 0,
+                        "l": 0
+                      },
+                      "align": "start",
+                      "justify": "start"
+                    }
+                  },
+                  {
+                    "id": "tab2Label",
+                    "type": "text",
+                    "name": "Label",
+                    "x": 0,
+                    "y": 26,
+                    "w": 80,
+                    "h": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "locked": false,
+                    "style": {
+                      "fill": null,
+                      "opacity": 1
+                    },
+                    "layout": {
+                      "mode": "none",
+                      "gap": 0,
+                      "padding": {
+                        "t": 0,
+                        "r": 0,
+                        "b": 0,
+                        "l": 0
+                      },
+                      "align": "start",
+                      "justify": "start"
+                    },
+                    "text": {
+                      "value": "Рейтинг",
+                      "token": "text.caption",
+                      "align": "center",
+                      "valign": "top",
+                      "color": "token:color.fgMuted",
+                      "size": null,
+                      "weight": null,
+                      "lineHeight": null,
+                      "letterSpacing": null
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "tab3",
+                "type": "frame",
+                "name": "Tab 4",
+                "x": 278,
+                "y": 20,
+                "w": 80,
+                "h": 44,
+                "rotation": 0,
+                "visible": true,
+                "locked": false,
+                "style": {
+                  "fill": null,
+                  "stroke": null,
+                  "radius": 0,
+                  "opacity": 1,
+                  "shadow": null,
+                  "clip": false
+                },
+                "layout": {
+                  "mode": "vertical",
+                  "gap": 4,
+                  "padding": {
+                    "t": 0,
+                    "r": 0,
+                    "b": 0,
+                    "l": 0
+                  },
+                  "align": "center",
+                  "justify": "center"
+                },
+                "clip": true,
+                "children": [
+                  {
+                    "id": "tab3Icon",
+                    "type": "ellipse",
+                    "name": "Icon",
+                    "x": 30,
+                    "y": 2,
+                    "w": 20,
+                    "h": 20,
+                    "rotation": 0,
+                    "visible": true,
+                    "locked": false,
+                    "style": {
+                      "fill": "token:color.border",
+                      "opacity": 1
+                    },
+                    "layout": {
+                      "mode": "none",
+                      "gap": 0,
+                      "padding": {
+                        "t": 0,
+                        "r": 0,
+                        "b": 0,
+                        "l": 0
+                      },
+                      "align": "start",
+                      "justify": "start"
+                    }
+                  },
+                  {
+                    "id": "tab3Label",
+                    "type": "text",
+                    "name": "Label",
+                    "x": 0,
+                    "y": 26,
+                    "w": 80,
+                    "h": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "locked": false,
+                    "style": {
+                      "fill": null,
+                      "opacity": 1
+                    },
+                    "layout": {
+                      "mode": "none",
+                      "gap": 0,
+                      "padding": {
+                        "t": 0,
+                        "r": 0,
+                        "b": 0,
+                        "l": 0
+                      },
+                      "align": "start",
+                      "justify": "start"
+                    },
+                    "text": {
+                      "value": "Профиль",
+                      "token": "text.caption",
+                      "align": "center",
+                      "valign": "top",
+                      "color": "token:color.fgMuted",
+                      "size": null,
+                      "weight": null,
+                      "lineHeight": null,
+                      "letterSpacing": null
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "n_mv0a0m2z7ho96q",
+            "type": "instance",
+            "name": "TopicCard",
+            "x": 20,
+            "y": 268,
+            "w": 350,
+            "h": 92,
+            "rotation": 0,
+            "visible": true,
+            "locked": false,
+            "style": {
+              "fill": "token:color.surfaceAlt",
+              "stroke": null,
+              "radius": 8,
+              "opacity": 1,
+              "shadow": null
+            },
+            "layout": {
+              "mode": "none",
+              "gap": 0,
+              "padding": {
+                "t": 0,
+                "r": 0,
+                "b": 0,
+                "l": 0
+              },
+              "align": "start",
+              "justify": "start"
+            },
+            "component": "topic-card",
+            "overrides": {
+              "label": "Наука",
+              "meta": "18 вопросов · 9 мин",
+              "tone": "token:color.success"
+            },
+            "clip": false,
+            "children": []
+          },
+          {
+            "id": "n_mv0a0m3083alhx",
+            "type": "instance",
+            "name": "TopicCard",
+            "x": 20,
+            "y": 376,
+            "w": 350,
+            "h": 92,
+            "rotation": 0,
+            "visible": true,
+            "locked": false,
+            "style": {
+              "fill": "token:color.surfaceAlt",
+              "stroke": null,
+              "radius": 8,
+              "opacity": 1,
+              "shadow": null
+            },
+            "layout": {
+              "mode": "none",
+              "gap": 0,
+              "padding": {
+                "t": 0,
+                "r": 0,
+                "b": 0,
+                "l": 0
+              },
+              "align": "start",
+              "justify": "start"
+            },
+            "component": "topic-card",
+            "overrides": {
+              "label": "Кино",
+              "meta": "31 вопрос · 15 мин",
+              "tone": "token:color.danger"
+            },
+            "clip": false,
+            "children": []
+          },
+          {
+            "id": "n_mv0a0m309gvvhk",
+            "type": "instance",
+            "name": "Button / Primary",
+            "x": 20,
+            "y": 690,
+            "w": 350,
+            "h": 52,
+            "rotation": 0,
+            "visible": true,
+            "locked": false,
+            "style": {
+              "fill": "token:color.surfaceAlt",
+              "stroke": null,
+              "radius": 8,
+              "opacity": 1,
+              "shadow": null
+            },
+            "layout": {
+              "mode": "none",
+              "gap": 0,
+              "padding": {
+                "t": 0,
+                "r": 0,
+                "b": 0,
+                "l": 0
+              },
+              "align": "start",
+              "justify": "start"
+            },
+            "component": "button-primary",
+            "overrides": {
+              "label": "Случайная тема"
+            },
+            "clip": false,
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "rev": 3
+}

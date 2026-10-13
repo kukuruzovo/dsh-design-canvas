@@ -1,0 +1,12 @@
+# Зависимости (у плагина их нет, но smoke-gui.mjs может прогревать playwright)
+node_modules/
+
+# Скриншоты и логи проверок
+.gui-shot.png
+*.gui-shot.png
+.gui-*.png
+*.log
+
+# Служебное окружения
+.DS_Store
+.tmp/

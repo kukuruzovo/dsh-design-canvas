@@ -1,0 +1,53 @@
+{
+  "name": "@local/dsh-design-canvas",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Visual HTML/CSS layout editor for DeepSeek Harness: Figma-like canvases per project, component library, design tokens, and agent tools to build and export app designs.",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js"
+  },
+  "files": [
+    "index.js",
+    "tools.js",
+    "route.js",
+    "service.js",
+    "ops.js",
+    "schema.js",
+    "store.js",
+    "export.js",
+    "client.js",
+    "cordis.patch.yml",
+    "icon.svg",
+    "README.md",
+    "demo.mjs",
+    "smoke.mjs",
+    "smoke-tools.mjs",
+    "smoke-client.mjs",
+    "smoke-gui.mjs"
+  ],
+  "scripts": {
+    "check": "for f in *.js *.mjs tools/*.mjs; do node --check \"$f\" || exit 1; done",
+    "test": "node smoke.mjs && node smoke-tools.mjs && node smoke-client.mjs",
+    "test:gui": "node smoke-gui.mjs",
+    "demo": "node demo.mjs",
+    "preview": "node tools/preview.mjs",
+    "agency:check": "node tools/agency-sync.mjs --check"
+  },
+  "meta": {
+    "title": "Design canvas",
+    "description": "Макеты приложений: 9 инструментов агента (создание холстов, операции, компоненты, токены, экспорт в HTML/CSS) и Figma-подобный редактор в веб-интерфейсе. Холсты лежат в <проект>/.design/ и версионируются вместе с кодом."
+  },
+  "icon": "./icon.svg",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": []
+    }
+  }
+}

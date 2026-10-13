@@ -1,0 +1,63 @@
+/* Сгенерировано dsh-design-canvas. Токены — единственный источник значений. */
+:root {
+  --color-bg: #0b0d10;
+  --color-surface: #141a24;
+  --color-surfaceAlt: #1b2230;
+  --color-border: #2a313d;
+  --color-fg: #e8eaed;
+  --color-fgMuted: #9aa4b2;
+  --color-accent: #5b8cff;
+  --color-accentFg: #0b0d10;
+  --color-danger: #ff5f56;
+  --color-success: #3fb950;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --font-sans: Inter, "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --text-h1-size: 32px;
+  --text-h1-weight: 700;
+  --text-h1-lineHeight: 1.15;
+  --text-h1-letterSpacing: -0.5px;
+  --text-h2-size: 24px;
+  --text-h2-weight: 650;
+  --text-h2-lineHeight: 1.2;
+  --text-h2-letterSpacing: -0.3px;
+  --text-body-size: 15px;
+  --text-body-weight: 400;
+  --text-body-lineHeight: 1.5;
+  --text-body-letterSpacing: 0px;
+  --text-caption-size: 12px;
+  --text-caption-weight: 500;
+  --text-caption-lineHeight: 1.4;
+  --text-caption-letterSpacing: 0.2px;
+  --shadow-card-x: 0px;
+  --shadow-card-y: 8px;
+  --shadow-card-blur: 24px;
+  --shadow-card-spread: 0px;
+  --shadow-card-color: rgba(0,0,0,0.45);
+  --shadow-pop-x: 0px;
+  --shadow-pop-y: 16px;
+  --shadow-pop-blur: 48px;
+  --shadow-pop-spread: -8px;
+  --shadow-pop-color: rgba(0,0,0,0.6);
+}
+
+.dc-page { margin:0; padding:0; background: var(--color-bg, #0b0d10); color: var(--color-fg, #e8eaed); }
+.dc-board { display:flex; flex-wrap:wrap; align-items:flex-start; gap:48px; padding:48px; }
+.dc-node { box-sizing:border-box; }
+.dc-frame { position:relative; }
+.dc-layout { position:relative; }
+.dc-text { min-width:0; }
+.dc-image { display:block; }
+
+/* --- компоненты --- */
+/* .dc-c-topic-card — TopicCard: Карточка темы викторины */
+/* .dc-c-button-primary — Button / Primary: Основное действие экрана */
+
