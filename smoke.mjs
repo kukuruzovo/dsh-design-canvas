@@ -14,7 +14,7 @@ const home = await mkdtemp(join(tmpdir(), 'dsh-design-home-'))
 process.env.DSH_HOME = home
 await mkdir(home, { recursive: true })
 
-const { defaultDocument, normalizeDoc, validateDoc, expandInstance, flattenTokens } = await import('./schema.js')
+const { defaultDocument, normalizeDoc, normalizeGuides, validateDoc, expandInstance, flattenTokens, componentProps, firstText } = await import('./schema.js')
 const { ensureProject, createCanvas, readCanvas, writeCanvas, listCanvases, deleteCanvas, listTrash, restoreTrash, listProjects, DESIGN_DIR } = await import('./store.js')
 const { applyOps, outline } = await import('./ops.js')
 const { renderDocument } = await import('./export.js')
@@ -89,6 +89,110 @@ try {
   assert.equal(expanded.id, instance.id, 'корень развёрнутого инстанса сохраняет id инстанса')
   assert.ok(expanded.children[0].id.startsWith(`${instance.id}/`), 'id детей неймспейснуты инстансом')
   ok('инстанс разворачивается и переопределяет подпись')
+
+  // ------------------------------------------------ компонент: правка ----
+  // `update-component` нужен панели: объявлять компонент заново, чтобы поменять
+  // имя или значение параметра, значило бы потерять прежний шаблон и все
+  // переопределения инстансов.
+  const labelTargetBefore = draft.components['button-primary'].props.label.target
+  const edited = applyOps(draft, [
+    { op: 'update-component', key: 'button-primary', name: 'Button / Edited', props: { label: { default: 'Готово' }, tone: { type: 'color', target: 'root', property: 'style.fill' } } },
+  ]).doc
+  const editedComponent = edited.components['button-primary']
+  assert.equal(editedComponent.name, 'Button / Edited', 'имя компонента обновлено')
+  assert.equal(editedComponent.props.label.default, 'Готово', 'значение параметра обновлено')
+  assert.equal(editedComponent.props.label.target, labelTargetBefore, 'правка одного поля параметра не теряет target')
+  assert.equal(editedComponent.props.tone.type, 'color', 'новый параметр добавлен')
+  assert.equal(typeof editedComponent.props.label.description, 'string', 'остальные поля параметра на месте')
+  assert.equal(editedComponent.props.label.property, 'text.value', 'правка не сбрасывает property')
+  const removedProp = applyOps(edited, [{ op: 'update-component', key: 'button-primary', props: { tone: null } }]).doc
+  assert.equal('tone' in removedProp.components['button-primary'].props, false, 'параметр со значением null убран')
+  const retemplated = applyOps(edited, [{ op: 'update-component', key: 'button-primary', node: { type: 'rect', w: 200, h: 60 } }]).doc
+  assert.equal(retemplated.components['button-primary'].node.type, 'rect', 'шаблон заменён')
+  assert.equal(retemplated.components['button-primary'].node.x, 0, 'шаблон нормализован к нулю')
+  assert.equal(retemplated.components['button-primary'].name, 'Button / Edited', 'замена шаблона не трогает имя')
+  assert.equal(Object.keys(retemplated.components['button-primary'].props).length, 2, 'замена шаблона не трогает параметры')
+  const retemplatedBtn = retemplated.root.children[0].children.find((n) => n.id === 'hero').children.find((n) => n.id === 'btn')
+  assert.equal(retemplatedBtn.component, 'button-primary', 'инстансы остались ссылкой на компонент')
+  let editFailures = 0
+  for (const bad of [{ key: 'нет-такого' }, { key: 'button-primary', props: { 'плохое имя': {} } }, { key: 'button-primary', props: { label: 'строка' } }, { key: 'button-primary', name: '' }]) {
+    try {
+      applyOps(edited, [{ op: 'update-component', ...bad }])
+    } catch (error) {
+      editFailures += 1
+      assert.match(error.message, /update-component/, 'ошибка называет операцию')
+    }
+  }
+  assert.equal(editFailures, 4, 'мусор в правке компонента отклоняется, а не пишется в файл')
+  ok('update-component: имя, параметры по полям, удаление параметра, замена шаблона и отказы')
+
+  // ---------------------------------------------- вариации компонента ----
+  // Вариация наследует шаблон и параметры компонента и может заменить шаблон
+  // целиком или поля отдельных параметров — так «primary» и «ghost» остаются
+  // одним компонентом с общим списком параметров, а не двумя независимыми.
+  const variantDoc = applyOps(edited, [
+    { op: 'update-component', key: 'button-primary', variants: {
+      ghost: { name: 'Ghost', node: { type: 'rect', w: 80, h: 32, children: [] }, props: { label: { default: 'Призрак' } } },
+      small: { name: 'Small' },
+    } },
+    { op: 'instantiate', component: 'button-primary', parent: 'hero', variant: 'ghost', x: 0, y: 200 },
+    { op: 'instantiate', component: 'button-primary', parent: 'hero', variant: 'нет-такой', x: 0, y: 260 },
+  ]).doc
+  const heroChildren = variantDoc.root.children[0].children.find((n) => n.id === 'hero').children
+  const ghostInstance = heroChildren.find((n) => n.variant === 'ghost')
+  assert.ok(ghostInstance, 'инстанс помнит вариацию')
+  const ghostExpanded = expandInstance(variantDoc, ghostInstance)
+  assert.equal(ghostExpanded.type, 'rect', 'шаблон вариации заменяет базовый шаблон')
+  assert.equal(ghostExpanded.w, 80, 'размер берётся из шаблона вариации')
+  assert.equal(expandInstance(variantDoc, { ...ghostInstance, variant: 'small' }).type, 'frame', 'вариация без шаблона наследует базовый')
+  assert.equal(firstText(ghostExpanded)?.text?.value, undefined, 'шаблон вариации без текста и не подменяется базовым')
+  const ghostProps = componentProps(variantDoc.components['button-primary'], 'ghost')
+  assert.equal(ghostProps.label.default, 'Призрак', 'патч вариации меняет значение параметра')
+  assert.equal(ghostProps.label.target, labelTargetBefore, 'патч вариации не сбрасывает цель параметра')
+  assert.equal(componentProps(variantDoc.components['button-primary'], 'small').label.default, 'Готово', 'вариация без props наследует параметры компонента')
+  const variantOverride = expandInstance(variantDoc, { ...ghostInstance, variant: 'small', overrides: { label: 'Свой' } })
+  assert.equal(firstText(variantOverride)?.text?.value, 'Свой', 'переопределение инстанса работает поверх вариации')
+  const variantIssues = validateDoc(variantDoc).issues.filter((issue) => issue.code === 'missing-variant')
+  assert.equal(variantIssues.length, 1, 'неизвестная вариация попадает в проверку')
+  const variantSheet = renderDocument(variantDoc, { components: true }).files.find((file) => file.name.endsWith('components.html'))
+  assert.equal((variantSheet.content.match(/dc-sheet-cell/g) ?? []).length, 3, 'лист библиотеки печатает базовый шаблон и каждую вариацию')
+  assert.ok(variantSheet.content.includes('Ghost'), 'подпись вариации попадает на лист')
+  const withoutGhost = applyOps(variantDoc, [{ op: 'update-component', key: 'button-primary', variants: { ghost: null } }]).doc
+  assert.equal('ghost' in withoutGhost.components['button-primary'].variants, false, 'вариация со значением null убрана')
+  let variantFailures = 0
+  for (const bad of [{ key: 'button-primary', variants: 'строка' }, { key: 'button-primary', variants: { 'плохое имя': {} } }, { key: 'button-primary', variants: { ok: 'строка' } }]) {
+    try {
+      applyOps(variantDoc, [{ op: 'update-component', ...bad }])
+    } catch (error) {
+      variantFailures += 1
+    }
+  }
+  assert.equal(variantFailures, 3, 'мусор в вариациях отклоняется')
+  ok('вариации компонента: наследование, патч параметров, проверка, экспорт и удаление')
+
+  const heroKids = () => edited.root.children[0].children.find((n) => n.id === 'hero').children.length
+  const cloned = applyOps(edited, [{
+    op: 'define-component',
+    key: 'button-ghost',
+    node: edited.components['button-primary'].node,
+    name: 'Button / Ghost',
+    props: edited.components['button-primary'].props,
+  }]).doc
+  assert.equal(cloned.components['button-ghost'].name, 'Button / Ghost', 'клон получает своё имя')
+  assert.notEqual(cloned.components['button-ghost'].node.id, edited.components['button-primary'].node.id, 'шаблон клона переименован')
+  assert.equal(cloned.components['button-ghost'].node.children.length, edited.components['button-primary'].node.children.length, 'дети шаблона скопированы')
+  assert.equal(cloned.root.children[0].children.find((n) => n.id === 'hero').children.length, heroKids(), 'клонирование не ставит узлов на холст')
+  assert.equal(cloned.components['button-ghost'].node.x, 0, 'шаблон клона нормализован к нулю')
+  let defineFailures = 0
+  for (const bad of [{ key: 'x' }, { key: 'y', node: 'строка' }]) {
+    try {
+      applyOps(edited, [{ op: 'define-component', ...bad }])
+    } catch (error) {
+      defineFailures += 1
+    }
+  }
+  assert.equal(defineFailures, 2, 'объявление без основы и с мусорным шаблоном отклоняется')
+  ok('define-component: шаблон можно задать напрямую — клон компонента без узла на холсте')
 
   const btnLayout = draft.root.children[0].children.find((n) => n.id === 'hero').children.find((n) => n.id === 'btn')
   assert.equal(btnLayout.type, 'instance')
@@ -341,6 +445,42 @@ try {
   assert.equal(clippedNode.children[0].id, 'outside', 'ребёнок добавленного фрейма остался в дереве')
   ok('add: фрейм обрезает детей по умолчанию, как фрейм документа')
 
+  // `group` умеет оборачивать выделение и в фрейм — тем же габаритом и тем же
+  // пересчётом детей, что у группы: из панели это пункт «Объединить в фрейм».
+  const wrapped = applyOps(doc, [
+    { op: 'add', parent: 'page', node: { id: 'wrap-a', type: 'rect', x: 10, y: 20, w: 30, h: 40 } },
+    { op: 'add', parent: 'page', node: { id: 'wrap-b', type: 'rect', x: 60, y: 100, w: 10, h: 10 } },
+    { op: 'group', ids: ['wrap-a', 'wrap-b'], as: 'frame' },
+  ]).doc
+  const wrapFrame = wrapped.root.children[0].children.find((node) => node.name === 'Frame')
+  assert.ok(wrapFrame, 'group as frame должен создавать фрейм')
+  assert.equal(wrapFrame.type, 'frame')
+  assert.equal(wrapFrame.clip, true, 'фрейм из group обрезает детей, как фрейм документа')
+  assert.deepEqual(
+    { x: wrapFrame.x, y: wrapFrame.y, w: wrapFrame.w, h: wrapFrame.h },
+    { x: 10, y: 20, w: 60, h: 90 },
+    'фрейм встаёт по габаритам выделения',
+  )
+  assert.deepEqual(
+    wrapFrame.children.map((node) => ({ id: node.id, x: node.x, y: node.y })),
+    [{ id: 'wrap-a', x: 0, y: 0 }, { id: 'wrap-b', x: 50, y: 80 }],
+    'дети пересчитаны внутрь фрейма',
+  )
+  assert.equal(applyOps(doc, [
+    { op: 'add', parent: 'page', node: { id: 'wrap-c', type: 'rect', x: 0, y: 0, w: 10, h: 10 } },
+    { op: 'group', ids: ['wrap-c'] },
+  ]).doc.root.children[0].children.find((node) => node.name === 'Group')?.type, 'group',
+    'по умолчанию group по-прежнему даёт группу',
+  )
+  let badAs = false
+  try {
+    applyOps(doc, [{ op: 'group', ids: ['page'], as: 'section' }])
+  } catch (error) {
+    badAs = /Допустимо group или frame/.test(error.message)
+  }
+  assert.ok(badAs, 'неизвестный «as» должен отклоняться, а не молча давать группу')
+  ok('group as frame: фрейм по габаритам выделения, дети внутри, неизвестный «as» отклонён')
+
   let rootComponent = false
   try {
     applyOps(tokenDoc, [{ op: 'define-component', key: 'root-comp', from: 'root' }])
@@ -455,6 +595,40 @@ try {
   const alignedNodes = rightAligned.root.children[0].children
   assert.equal(alignedNodes.find((node) => node.id === 'a1').x, 40, 'согласованный axis выравнивает по правому краю')
   ok('align: противоречие axis и mode отклоняется, согласованный axis работает')
+
+  // ------------------------------------------------- направляющие холста ----
+  // Поле документа: старый холст не обрастает им, чужие значения отбрасываются.
+  // Направляющие — редакторская разметка, поэтому живут в `canvas.json`, а не в
+  // localStorage: их видно в другом сеансе и в чужой копии проекта.
+  const plainDoc = defaultDocument('plain', 'Plain')
+  assert.equal('guides' in plainDoc, false, 'холст по умолчанию не знает направляющих')
+  assert.equal('guides' in normalizeDoc(plainDoc), false, 'нормализация не добавляет пустое поле')
+  const tidyDoc = normalizeDoc({ guides: { x: [300, 100, 'abc', 100, null, -20], y: 'нет' } })
+  assert.deepEqual(tidyDoc.guides, { x: [-20, 100, 300], y: [] }, 'мусор отброшен, дубли и порядок исправлены')
+  assert.equal(normalizeGuides({ x: Array.from({ length: 140 }, (_, i) => i) }).x.length, 100, 'ось ограничена сотней направляющих')
+  ok('направляющие: нормализация, дедупликация, порядок и лимит оси')
+
+  const guided = applyOps(defaultDocument('g', 'G'), [{ op: 'set-guides', x: [120, 40], y: [-10] }]).doc
+  assert.deepEqual(guided.guides, { x: [40, 120], y: [-10] }, 'set-guides задаёт обе оси')
+  const keptAxis = applyOps(guided, [{ op: 'set-guides', x: [200] }]).doc
+  assert.deepEqual(keptAxis.guides, { x: [200], y: [-10] }, 'set-guides заменяет только названную ось')
+  const clearedGuides = applyOps(keptAxis, [{ op: 'set-guides', clear: true }]).doc
+  assert.equal('guides' in clearedGuides, false, 'clear убирает поле целиком')
+  const guideSource = defaultDocument('g2', 'G2')
+  let guideError = null
+  try { applyOps(guideSource, [{ op: 'set-guides', x: ['abc'] }]) } catch (error) { guideError = error }
+  assert.ok(guideError && guideError.opIndex === 0 && /set-guides/.test(guideError.message) && /не число/.test(guideError.message),
+    'нечисловая координата — ошибка операции с её индексом')
+  let rollbackError = null
+  try {
+    applyOps(guideSource, [{ op: 'set-guides', x: [10] }, { op: 'update', id: 'нет-такого', patch: { x: 1 } }])
+  } catch (error) { rollbackError = error }
+  assert.ok(rollbackError, 'батч с ошибкой отклонён')
+  assert.equal('guides' in guideSource, false, 'неудачный батч не меняет исходный документ')
+  await writeCanvas(project.id, 'guided', guided, { create: true })
+  const guideBack = await readCanvas(project.id, 'guided')
+  assert.deepEqual(guideBack.doc.guides, { x: [40, 120], y: [-10] }, 'направляющие переживают запись и чтение файла')
+  ok('операция set-guides: замена оси, clear, отказ на мусоре и запись в файл')
 
   const dupAdd = applyOps(doc, [
     { op: 'add', parent: 'page', node: { id: 'dup', type: 'rect', w: 10, h: 10 } },

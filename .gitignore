@@ -5,6 +5,7 @@ node_modules/
 .gui-shot.png
 *.gui-shot.png
 .gui-*.png
+.editor-*.png
 *.log
 
 # Служебное окружения

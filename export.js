@@ -16,7 +16,7 @@
  *
  * Модуль чистый: ни файловой системы, ни HTTP. Запись артефактов — в store.js.
  */
-import { childrenOf, expandInstance, flattenTokens, isPlainObject, num, resolveToken } from './schema.js'
+import { childrenOf, componentTemplate, expandInstance, flattenTokens, isPlainObject, num, resolveToken, variantName } from './schema.js'
 
 /** Режимы экспорта. */
 export const EXPORT_MODES = ['fidelity', 'clean']
@@ -342,29 +342,36 @@ function renderComponentSheet(ctx) {
   if (components.length === 0) return ''
   const parts = ['<div class="dc-sheet" style="display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start">']
   for (const component of components) {
-    const w = num(component.node.w, 100)
-    const h = num(component.node.h, 100)
-    const instance = {
-      id: `sheet-${component.key}`,
-      type: 'instance',
-      name: component.name,
-      x: 0,
-      y: 0,
-      w,
-      h,
-      rotation: 0,
-      visible: true,
-      locked: false,
-      component: component.key,
-      overrides: {},
-      style: {},
+    // Каждая вариация печатается своей ячейкой: лист библиотеки — единственное
+    // место, где варианты компонента видно рядом, без переключения на холсте.
+    for (const variant of [null, ...Object.keys(component.variants ?? {})]) {
+      const template = componentTemplate(component, variant)
+      const w = num(template.w, 100)
+      const h = num(template.h, 100)
+      const instance = {
+        id: `sheet-${component.key}${variant ? `-${variant}` : ''}`,
+        type: 'instance',
+        name: component.name,
+        x: 0,
+        y: 0,
+        w,
+        h,
+        rotation: 0,
+        visible: true,
+        locked: false,
+        component: component.key,
+        overrides: {},
+        style: {},
+      }
+      if (variant) instance.variant = variant
+      const title = variant ? `${component.name} · ${variantName(component, variant)}` : component.name
+      parts.push(`  <figure class="dc-sheet-cell" style="margin:0;position:relative;width:${px(w)}">`)
+      parts.push(`    <div class="dc-sheet-holder" style="position:relative;width:${px(w)};height:${px(h)}">`)
+      parts.push(renderNode(ctx, instance, 3, false))
+      parts.push('    </div>')
+      parts.push(`    <figcaption style="font:12px/1.4 var(--font-sans, ${FONT_FALLBACK});color:var(--color-fgMuted, #9aa4b2);margin-top:10px">${escapeHtml(title)} <code style="opacity:.7">${escapeHtml(component.key)}${variant ? `/${escapeHtml(variant)}` : ''}</code></figcaption>`)
+      parts.push('  </figure>')
     }
-    parts.push(`  <figure class="dc-sheet-cell" style="margin:0;position:relative;width:${px(w)}">`)
-    parts.push(`    <div class="dc-sheet-holder" style="position:relative;width:${px(w)};height:${px(h)}">`)
-    parts.push(renderNode(ctx, instance, 3, false))
-    parts.push('    </div>')
-    parts.push(`    <figcaption style="font:12px/1.4 var(--font-sans, ${FONT_FALLBACK});color:var(--color-fgMuted, #9aa4b2);margin-top:10px">${escapeHtml(component.name)} <code style="opacity:.7">${escapeHtml(component.key)}</code></figcaption>`)
-    parts.push('  </figure>')
   }
   parts.push('</div>')
   return parts.join('\n')

@@ -87,6 +87,12 @@ const enBlock = /EN\s*=\s*\{([\s\S]*?)\n\s*\}/.exec(source)
 assert.ok(enBlock, 'словарь EN найден')
 ok(`словари локализации: RU ${ruKeys.length} ключей, EN ${[...enBlock[1].matchAll(/^\s{6}([A-Za-z][A-Za-z0-9_]*):/gm)].length}`)
 
+for (const key of ['rulers', 'rulersHint', 'guides', 'guidesHint', 'guidesClear', 'snap', 'snapHint', 'viewOptions']) {
+  assert.match(ruBlock[1], new RegExp(`\\n\\s{6}${key}: `), `в словаре RU нет ключа ${key}`)
+  assert.match(enBlock[1], new RegExp(`\\n\\s{6}${key}: `), `в словаре EN нет ключа ${key}`)
+}
+ok('ключи разметки холста переведены в обоих словарях')
+
 // --------------------------------------------------------------- разделы UI ----
 const sections = [
   ['слои', /LayersTree|LayersPanel/],
@@ -101,6 +107,20 @@ const sections = [
   ['горячие клавиши', /keydown|onKeyDown/],
   ['ресайз', /resize|handle/i],
   ['зум/пан', /zoom|pan/i],
+  ['наведение', /OverlayLayer/],
+  ['линейки', /Rulers/],
+  ['направляющие', /guideDrag|dc-guide/],
+  ['привязка', /applySnap|snapEnabled/],
+  ['замеры', /measureNode|padZonesOf/],
+  ['рамка выделения', /marqueeNodes/],
+  ['контекстное меню', /ContextMenu/],
+  ['выравнивание', /AlignSection/],
+  ['буфер обмена', /pasteClipboard|clipboard/],
+  ['вход в контейнер', /enteredId/],
+  ['превью компонента', /ComponentPreview/],
+  ['параметры компонента', /componentProps|propTarget/],
+  ['переопределения инстанса', /resetOverride|overridden/],
+  ['подсветка инстансов', /dc-ov-mark|marks/],
 ]
 for (const [label, pattern] of sections) {
   assert.match(source, pattern, `секция «${label}» не найдена`)
@@ -151,7 +171,12 @@ ok('модалка «Инициализировать проект» не под
 // меняет файл при простом перетаскивании узла, а заметить это в браузере почти
 // нельзя. Функции вырезаются из исходника и выполняются в Node: правило раскладки
 // — чистые функции без DOM, поэтому его можно прогнать по матрице случаев.
-const { layoutChildren } = await import('./schema.js')
+const {
+  layoutChildren,
+  defaultPropProperty: hostPropProperty,
+  componentProps: hostComponentProps,
+  componentTemplate: hostComponentTemplate,
+} = await import('./schema.js')
 const bodyOf = (text, name) => {
   const start = text.indexOf(`function ${name}(`)
   if (start < 0) return null
@@ -216,5 +241,229 @@ for (const item of flowCases) {
   assert.deepEqual(panel, host, `панель и host разошлись на ${JSON.stringify(item.layout)} (${item.children.length} детей)`)
 }
 ok(`раскладка панели совпадает с host на ${flowCases.length} случаях (значения и арифметика)`)
+
+// --------------------------------------- геометрия разметки: поведение ----
+// Те же чистые функции, что крутят наведение, замеры и привязку, прогоняются в
+// Node: расхождение здесь не видно в браузере (обводка просто «чуть мимо»), а
+// стоит оно неправильных координат при перетаскивании.
+const geometryPieces = []
+for (const name of ['num', 'isPlainObject', 'clamp', 'flattenRects', 'ancestorChain', 'nodePadding', 'padZonesOf', 'measureNode', 'applySnap', 'tidyGuides', 'rulerStep', 'guidesOf']) {
+  const body = bodyOf(source, name)
+  assert.ok(body, `функция \`${name}\` не найдена в client.js`)
+  geometryPieces.push(body)
+}
+const geometry = new Function(`${geometryPieces.join('\n')}\nreturn { flattenRects, ancestorChain, measureNode, applySnap, tidyGuides, rulerStep, guidesOf, padZonesOf }`)()
+
+const tree = {
+  id: 'root',
+  type: 'frame',
+  x: 0,
+  y: 0,
+  w: 0,
+  h: 0,
+  children: [{
+    id: 'page',
+    type: 'frame',
+    x: 10,
+    y: 20,
+    w: 300,
+    h: 400,
+    layout: { mode: 'vertical', gap: 8, padding: { t: 12, r: 16, b: 12, l: 16 }, align: 'start', justify: 'start' },
+    children: [
+      { id: 'a', type: 'rect', x: 16, y: 12, w: 40, h: 20 },
+      { id: 'b', type: 'rect', x: 16, y: 40, w: 60, h: 20 },
+      { id: 'hidden', type: 'rect', x: 16, y: 68, w: 10, h: 10, visible: false },
+    ],
+  }],
+}
+const ctx = geometry.flattenRects(tree)
+assert.deepEqual(ctx.rects.get('b'), { x: 26, y: 60, w: 60, h: 20 }, 'абсолютные координаты складываются по предкам')
+assert.deepEqual(geometry.ancestorChain(ctx.parents, 'b'), ['b', 'page', 'root'], 'цепочка предков идёт от узла к корню')
+ok('плоская геометрия: прямоугольники и цепочка предков за один обход')
+
+const measured = geometry.measureNode(ctx, 'a')
+assert.deepEqual(measured.gaps, { left: 16, top: 12, right: 244, bottom: 368 }, 'отступы считаются до внешней рамки родителя')
+assert.equal(measured.neighbors.bottom?.gap, 8, 'ближайший сосед снизу найден')
+assert.equal(measured.neighbors.top, undefined, 'соседа сверху нет')
+assert.equal(measured.neighbors.bottom?.id, 'b', 'скрытый сосед в замеры не попадает')
+assert.deepEqual(geometry.measureNode(ctx, 'page').gaps, { left: 0, top: 0, right: 0, bottom: 0 },
+  'у родителя нулевого размера (корень документа) отступы не выдумываются')
+const zones = geometry.padZonesOf(measured.parent.rect, measured.parent.pad)
+assert.equal(zones.length, 4, 'padding разложен на четыре подложки')
+assert.deepEqual(zones[3], { key: 'l', x: 10, y: 20, w: 16, h: 400 }, 'левая подложка padding совпадает с рамкой родителя')
+ok(`замеры узла: отступы ${Object.values(measured.gaps).join('/')} и сосед снизу ${measured.neighbors.bottom.gap}`)
+
+const snapBox = { x: 100, y: 50, w: 40, h: 20 }
+const near = { x: [{ value: 104, rect: { x: 104, y: 0, w: 10, h: 10 }, kind: 'sibling' }], y: [{ value: 50, rect: { x: 0, y: 50, w: 10, h: 10 }, kind: 'parent' }] }
+const snapped = geometry.applySnap(snapBox, near, { x: [], y: [] }, 6)
+assert.equal(snapped.dx, 4, 'ближайший край подтягивается к линии в пределах порога')
+assert.equal(snapped.dy, 0, 'уже совпавшая ось не сдвигается')
+assert.equal(snapped.lines.length, 2, 'совпавшие линии возвращаются для отрисовки')
+assert.equal(geometry.applySnap(snapBox, { x: [{ value: 200, rect: null, kind: 'sibling' }], y: [] }, { x: [], y: [] }, 6).dx, 0, 'линия за порогом не притягивает')
+assert.equal(geometry.applySnap(snapBox, near, { x: [], y: [] }, 6, ['right']).dx, 0, 'запрещённый край не двигается при ресайзе')
+assert.equal(geometry.applySnap(snapBox, near, { x: [], y: [] }, 6, ['left']).dx, 4, 'разрешённый край двигается')
+const byGuide = geometry.applySnap(snapBox, { x: [], y: [] }, { x: [103], y: [] }, 6)
+assert.equal(byGuide.dx, 3, 'направляющая участвует в привязке')
+assert.equal(byGuide.lines[0].from, null, 'линия привязки к направляющей идёт через весь холст')
+ok('привязка: порог, ближайший край, ограничение краёв и направляющие')
+
+assert.deepEqual(geometry.tidyGuides([5, 'abc', 5, 3.14159, null, 200, -1]), [-1, 3.14, 5, 200], 'направляющие сортируются, дедуплицируются и чинятся от мусора')
+assert.deepEqual(geometry.guidesOf({}, 'x'), [], 'документ без поля направляющих читается как пустой набор')
+assert.deepEqual(geometry.guidesOf({ guides: { y: [3] } }, 'x'), [], 'чужая ось не подставляется')
+for (const zoom of [0.05, 0.1, 0.5, 1, 2, 4, 8]) {
+  assert.ok(geometry.rulerStep(zoom) * zoom >= 8, `штрих линейки на zoom ${zoom} не мельче восьми пикселей`)
+}
+ok('направляющие и шаг линеек: чистка значений, пустое поле, шаг штрихов')
+
+// ------------------------------------ правки панели: выделение и копии ----
+// Рамка выделения и копирование поддерева — тоже чистые функции, поэтому их
+// поведение проверяется в Node, а не только живым прогоном.
+const containers = constOf(source, 'CONTAINERS')
+const marqueeSource = `${containers}\n${bodyOf(source, 'marqueeNodes')}\nreturn marqueeNodes`
+const marquee = new Function(marqueeSource)()
+const mTree = {
+  id: 'root',
+  type: 'frame',
+  x: 0,
+  y: 0,
+  w: 0,
+  h: 0,
+  children: [
+    {
+      id: 'frameA',
+      type: 'frame',
+      x: 0,
+      y: 0,
+      w: 200,
+      h: 200,
+      children: [
+        { id: 'a1', type: 'rect', x: 10, y: 10, w: 40, h: 40 },
+        { id: 'a2', type: 'rect', x: 100, y: 100, w: 40, h: 40 },
+        { id: 'hidden', type: 'rect', x: 10, y: 100, w: 10, h: 10, visible: false },
+      ],
+    },
+    { id: 'frameB', type: 'frame', x: 400, y: 0, w: 100, h: 100 },
+  ],
+}
+const mCtx = geometry.flattenRects(mTree)
+assert.deepEqual(marquee(mCtx, { x: 0, y: 0, w: 500, h: 300 }, 'root'), ['frameA', 'frameB'],
+  'рамка по всему холсту выбирает верхние фреймы')
+assert.deepEqual(marquee(mCtx, { x: 5, y: 5, w: 60, h: 60 }, 'frameA'), ['a1'],
+  'рамка внутри контейнера выбирает его детей')
+assert.deepEqual(marquee(mCtx, { x: 5, y: 5, w: 60, h: 120 }, 'frameA'), ['a1'],
+  'скрытый узел в выделение не попадает')
+assert.deepEqual(marquee(mCtx, { x: 30, y: 30, w: 200, h: 200 }, 'root'), ['frameA'],
+  'рамка, которая лишь пересекает фрейм, выбирает фрейм, а не его детей')
+ok('рамка выделения: верхний уровень, вход в контейнер и скрытые узлы')
+
+const reidSource = `let idCounter = 0\n${bodyOf(source, 'clone')}\n${bodyOf(source, 'nextNodeId')}\n${bodyOf(source, 'reidTree')}\nreturn reidTree`
+const reidTree = new Function(reidSource)()
+const original = { id: 'card', type: 'frame', x: 5, y: 6, name: 'Card', children: [{ id: 'label', type: 'text', x: 1, y: 1 }] }
+const copy = reidTree(original)
+assert.notEqual(copy.id, 'card', 'копия получает новый id')
+assert.notEqual(copy.children[0].id, 'label', 'дети копии тоже переименованы')
+assert.notEqual(reidTree(original).id, copy.id, 'два копирования дают разные id')
+assert.equal(copy.x, 5, 'геометрия копии сохраняется')
+assert.equal(copy.children.length, 1, 'поддерево копируется целиком')
+assert.equal(original.id, 'card', 'исходный узел не меняется')
+ok('копия поддерева: новые id во всей ветке, оригинал не тронут')
+
+// -------------------------------------------------------- жест: геометрия ----
+// Жест пишет в узел координаты его родителя, а абсолютные прямоугольники нужны
+// только габариту выделения и кандидатам привязки. Расхождение здесь — «улёт»
+// вложенного узла на смещение контейнера при первом же движении, а увидеть это
+// в браузере можно только случайно: на верхнем фрейме оба числа совпадают.
+const gestureSource = [
+  bodyOf(source, 'num'),
+  bodyOf(source, 'ancestorChain'),
+  bodyOf(source, 'movableRoots'),
+  bodyOf(source, 'axisLock'),
+  bodyOf(source, 'boundsOf'),
+  bodyOf(source, 'rebaseNodes'),
+  bodyOf(source, 'localBox'),
+].join('\n')
+const gesture = new Function(`${gestureSource}\nreturn { movableRoots, axisLock, boundsOf, rebaseNodes, localBox }`)()
+
+const parents = new Map([['page', 'root'], ['card', 'page'], ['label', 'card'], ['btn', 'page'], ['root', null]])
+assert.deepEqual(gesture.movableRoots(parents, ['card', 'label']), ['card'],
+  'потомок выделенного предка не двигается второй раз')
+assert.deepEqual(gesture.movableRoots(parents, ['card', 'btn']), ['card', 'btn'],
+  'узлы разных веток двигаются оба')
+assert.deepEqual(gesture.movableRoots(parents, ['orphan']), ['orphan'],
+  'узел вне дерева не теряется')
+assert.deepEqual(gesture.axisLock(12, 3, true), { dx: 12, dy: 0 }, 'Shift держит X, когда курсор ушёл по X')
+assert.deepEqual(gesture.axisLock(3, -12, true), { dx: 0, dy: -12 }, 'Shift держит Y, когда курсор ушёл по Y')
+assert.deepEqual(gesture.axisLock(3, -12, false), { dx: 3, dy: -12 }, 'без Shift обе оси свободны')
+assert.deepEqual(gesture.axisLock(0, 0, true), { dx: 0, dy: 0 }, 'нулевой сдвиг остаётся нулевым')
+assert.deepEqual(gesture.localBox({ x: 50, y: 310, w: 20, h: 20 }, { x: 40, y: 300 }),
+  { x: 10, y: 10, w: 20, h: 20 }, 'абсолютный прямоугольник переводится в координаты родителя')
+assert.deepEqual(gesture.boundsOf([{ x: 10, y: 20, w: 30, h: 40 }, { x: 60, y: 100, w: 10, h: 10 }]),
+  { x: 10, y: 20, w: 60, h: 90 }, 'габарит набора считается по крайним точкам')
+ok('жест: локальные координаты, ограничение по оси, корни выделения и габарит')
+
+// ------------------------------------------- группа и фрейм: паритет с host ----
+// Панель оборачивает выделение своей арифметикой (`groupSelection`), ядро — своей
+// (`group`). Паритет проверяется на одном документе: расхождение даст разный
+// результат у человека и у агента при одинаковом выделении.
+const { applyOps } = await import('./ops.js')
+const { defaultDocument } = await import('./schema.js')
+const wrapBase = defaultDocument('wrap', 'Wrap')
+const hostWrap = applyOps(wrapBase, [
+  { op: 'add', parent: 'page', node: { id: 'wrap-a', type: 'rect', x: 10, y: 20, w: 30, h: 40 } },
+  { op: 'add', parent: 'page', node: { id: 'wrap-b', type: 'rect', x: 60, y: 100, w: 10, h: 10 } },
+  { op: 'group', ids: ['wrap-a', 'wrap-b'], as: 'frame' },
+]).doc.root.children[0].children.find((node) => node.name === 'Frame')
+const panelBounds = gesture.boundsOf([{ x: 10, y: 20, w: 30, h: 40 }, { x: 60, y: 100, w: 10, h: 10 }])
+assert.deepEqual({ x: hostWrap.x, y: hostWrap.y, w: hostWrap.w, h: hostWrap.h }, panelBounds,
+  'габарит панели совпадает с габаритом фрейма из ядра')
+assert.deepEqual(hostWrap.children.map((node) => ({ id: node.id, x: node.x, y: node.y })),
+  [{ id: 'wrap-a', x: 0, y: 0 }, { id: 'wrap-b', x: 50, y: 80 }],
+  'ядро пересчитывает детей внутрь фрейма так же, как панель')
+// Та же арифметика, которой оборачивает панель: габарит плюс пересчёт детей.
+const panelChildren = gesture.rebaseNodes(
+  [{ id: 'wrap-a', x: 10, y: 20 }, { id: 'wrap-b', x: 60, y: 100 }],
+  panelBounds,
+)
+assert.deepEqual(panelChildren.map((node) => ({ id: node.id, x: node.x, y: node.y })),
+  hostWrap.children.map((node) => ({ id: node.id, x: node.x, y: node.y })),
+  'пересчёт детей панелью совпадает с ядром узел в узел')
+assert.equal(gesture.boundsOf([{ x: 7, y: 9, w: 20, h: 20 }]).x, 7,
+  'габарит одного узла — его собственный прямоугольник (объединение одного разрешено)')
+ok('объединение в фрейм: габарит и пересчёт детей совпадают с операцией `group`')
+
+// ------------------------------------- параметры компонента: паритет ----
+// Редактор параметров панели повторяет правила host-схемы: тип значения и путь
+// свойства по умолчанию. Расхождение здесь пишет параметр, который на сервере
+// чинится в другое поле, — то есть правка из панели молча уезжает не туда.
+const propHelpers = new Function(`${bodyOf(source, 'num')}\n${bodyOf(source, 'coercePropDefault')}\n${bodyOf(source, 'defaultPropProperty')}\nreturn { coercePropDefault, defaultPropProperty }`)()
+for (const type of ['text', 'color', 'number', 'boolean', 'token']) {
+  assert.equal(propHelpers.defaultPropProperty(type), hostPropProperty(type), `свойство по умолчанию для типа ${type} совпадает с host-схемой`)
+}
+assert.equal(propHelpers.coercePropDefault('number', '42'), 42, 'число приводится к числу')
+assert.equal(propHelpers.coercePropDefault('boolean', 'true'), true, 'булево приводится к true')
+assert.equal(propHelpers.coercePropDefault('boolean', 'нет'), false, 'остальное — false')
+assert.equal(propHelpers.coercePropDefault('text', 5), '5', 'текстовое значение становится строкой')
+ok('параметры компонента: путь свойства и приведение значения совпадают с host')
+
+// --------------------------------------- вариации компонента: паритет ----
+// Панель разворачивает инстанс сама (до сохранения), поэтому правила вариации —
+// выбор шаблона и слияние параметров — обязаны совпадать с host-схемой.
+const variantHelpers = new Function(`${bodyOf(source, 'isPlainObject')}\n${bodyOf(source, 'clone')}\n${bodyOf(source, 'componentProps')}\n${bodyOf(source, 'componentTemplate')}\nreturn { componentProps, componentTemplate }`)()
+const variantFixture = {
+  node: { type: 'frame', w: 120, h: 40 },
+  props: { label: { type: 'text', default: 'A', target: '#Label', property: 'text.value' } },
+  variants: {
+    ghost: { name: 'Ghost', node: { type: 'rect', w: 80, h: 32 }, props: { label: { default: 'B' } } },
+    small: { name: 'Small' },
+  },
+}
+for (const variant of [undefined, 'ghost', 'small', 'нет-такой']) {
+  assert.deepEqual(variantHelpers.componentProps(variantFixture, variant), hostComponentProps(variantFixture, variant),
+    `действующие параметры вариации «${variant}» совпадают с host`)
+  assert.deepEqual(variantHelpers.componentTemplate(variantFixture, variant), hostComponentTemplate(variantFixture, variant),
+    `шаблон вариации «${variant}» совпадает с host`)
+}
+assert.equal(variantHelpers.componentProps(variantFixture, 'ghost').label.target, '#Label', 'патч вариации не теряет цель параметра')
+ok('вариации компонента: выбор шаблона и слияние параметров совпадают с host')
 
 console.log(`\nКлиентская половина: ${checks} проверок, ${lines} строк.\n`)

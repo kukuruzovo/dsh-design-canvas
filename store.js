@@ -67,21 +67,12 @@ function fail(status, message, payload) {
 }
 
 /**
- * Проекты по умолчанию — корни из реестра проектов пользователя.
- * Совпадает с таблицей проектов в глобальном `AGENTS.md`.
- */
-const DEFAULT_PROJECTS = {
-  kendra: { title: 'Kendra — Discord RPG-бот', root: join(HOME, 'operativ/main/kendra/repo/KendraMSR-discord_bot') },
-  'kendra-world': { title: 'Kendra — документация мира', root: join(HOME, 'operativ/main/kendra/docs/kendra_docs') },
-  quizforge: { title: 'QuizForge', root: join(HOME, 'operativ/main/QuizForge') },
-  'espanol-vivo': { title: 'Español Vivo', root: join(HOME, 'operativ/main/espanol-vivo') },
-  biopath: { title: 'BioPath (Unity)', root: join(HOME, 'operativ/unity/projects/biopath') },
-  mondala: { title: 'mondala (Godot)', root: join(HOME, 'operativ/main/godot-projects/mondala') },
-  'logistics-sim': { title: 'Логистик симулятор (Godot)', root: join(HOME, 'operativ/main/godot-projects/logistics-sim') },
-}
-
-/**
- * Прочитать конфиг реестра: `$DSH_HOME/design-canvas.json` поверх дефолтов.
+ * Прочитать конфиг реестра: `$DSH_HOME/design-canvas.json`.
+ *
+ * Встроенного списка проектов нет: реестр начинается пустым и наполняется
+ * каталогами, которые пользователь инициализировал (`design_projects init`,
+ * `design_create` или `standalone.js --project`). Так плагин не знает заранее
+ * ни одного пути на машине.
  *
  * @returns {{projects: Record<string, object>, defaultProject: string|null}}
  */
@@ -95,7 +86,6 @@ export function loadConfig() {
     }
   }
   const projects = {}
-  for (const [id, value] of Object.entries(DEFAULT_PROJECTS)) projects[id] = { ...value }
   if (raw.projects && typeof raw.projects === 'object') {
     for (const [id, value] of Object.entries(raw.projects)) {
       if (!ID_RE.test(id)) continue

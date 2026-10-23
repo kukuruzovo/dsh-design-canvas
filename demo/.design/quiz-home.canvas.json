@@ -5,7 +5,7 @@
   "name": "QuizForge — Home",
   "device": "mobile",
   "createdAt": "2026-10-09T01:18:07.296Z",
-  "updatedAt": "2026-10-09T01:18:07.316Z",
+  "updatedAt": "2026-10-13T18:49:50.668Z",
   "tokens": {
     "color": {
       "bg": "#0b0d10",
@@ -250,7 +250,8 @@
           "target": "#CardIcon",
           "property": "style.fill"
         }
-      }
+      },
+      "variants": {}
     },
     "button-primary": {
       "key": "button-primary",
@@ -338,7 +339,8 @@
           "target": "#Label",
           "property": "text.value"
         }
-      }
+      },
+      "variants": {}
     }
   },
   "root": {
@@ -1111,7 +1113,7 @@
           },
           {
             "id": "n_mv0a0m309gvvhk",
-            "type": "instance",
+            "type": "frame",
             "name": "Button / Primary",
             "x": 20,
             "y": 690,
@@ -1121,34 +1123,71 @@
             "visible": true,
             "locked": false,
             "style": {
-              "fill": "token:color.surfaceAlt",
+              "fill": "token:color.accent",
               "stroke": null,
-              "radius": 8,
+              "radius": "token:radius.pill",
               "opacity": 1,
-              "shadow": null
+              "shadow": null,
+              "clip": true
             },
             "layout": {
-              "mode": "none",
+              "mode": "horizontal",
               "gap": 0,
               "padding": {
-                "t": 0,
-                "r": 0,
+                "t": 20,
+                "r": 20,
                 "b": 0,
-                "l": 0
+                "l": 20
               },
-              "align": "start",
-              "justify": "start"
+              "align": "center",
+              "justify": "center"
             },
-            "component": "button-primary",
-            "overrides": {
-              "label": "Случайная тема"
-            },
-            "clip": false,
-            "children": []
+            "clip": true,
+            "children": [
+              {
+                "id": "n_mv71cjm01rf5by",
+                "type": "text",
+                "name": "Label",
+                "x": 75,
+                "y": 24,
+                "w": 200,
+                "h": 24,
+                "rotation": 0,
+                "visible": true,
+                "locked": false,
+                "style": {
+                  "fill": null,
+                  "opacity": 1
+                },
+                "layout": {
+                  "mode": "none",
+                  "gap": 0,
+                  "padding": {
+                    "t": 0,
+                    "r": 0,
+                    "b": 0,
+                    "l": 0
+                  },
+                  "align": "start",
+                  "justify": "start"
+                },
+                "text": {
+                  "value": "Случайная тема",
+                  "token": "text.body",
+                  "align": "center",
+                  "valign": "middle",
+                  "color": "token:color.accentFg",
+                  "size": null,
+                  "weight": null,
+                  "lineHeight": null,
+                  "letterSpacing": null
+                }
+              }
+            ]
           }
         ]
       }
     ]
   },
-  "rev": 3
+  "rev": 10
 }

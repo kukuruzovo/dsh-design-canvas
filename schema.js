@@ -160,7 +160,7 @@ export function defaultNode(type = 'rect', init = {}) {
     base.children = Array.isArray(init.children) ? init.children.map((child) => normalizeNode(child)) : []
   }
   // Явные поля поверх дефолтов: init может нести `clip`, `image`, `text` и т. п.
-  for (const key of ['clip', 'text', 'image', 'component', 'overrides']) {
+  for (const key of ['clip', 'text', 'image', 'component', 'overrides', 'variant']) {
     if (init[key] !== undefined) base[key] = init[key]
   }
   return base
@@ -309,6 +309,9 @@ export function normalizeNode(node, depth = 0) {
   if (type === 'instance') {
     out.component = typeof raw.component === 'string' ? raw.component : ''
     out.overrides = isPlainObject(raw.overrides) ? { ...raw.overrides } : {}
+    // Вариация — тоже поле инстанса, как и ключ компонента: пустая не пишется,
+    // чтобы старый документ не обрастал полем при каждой записи.
+    if (typeof raw.variant === 'string' && raw.variant !== '') out.variant = raw.variant
   }
   if (CONTAINER_TYPES.has(type)) {
     out.clip = raw.clip === true
@@ -341,8 +344,49 @@ export function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+/** Сколько направляющих хранит одна ось: больше — уже не разметка, а мусор. */
+export const GUIDE_LIMIT = 100
+
 /**
- * Канонический документ: формат, версия, токены, компоненты, корень.
+ * Направляющие редактора: вертикальные (`x`) и горизонтальные (`y`).
+ *
+ * Живут в документе, а не в localStorage: линейка — часть макета, её хочется
+ * увидеть в другом сеансе и закоммитить рядом с холстом. Мусор отбрасывается
+ * молча (как и в узле): координата обязана быть конечным числом, значения
+ * сортируются и дедуплицируются, лишние обрезаются по `GUIDE_LIMIT`.
+ *
+ * Пустой набор остаётся пустым объектом, а не парой массивов: холст без
+ * направляющих не должен обрастать полями при каждой записи (то же правило,
+ * что у `autoW`/`autoH`).
+ *
+ * @param {object} raw Сырое поле `guides`.
+ * @returns {{x: number[], y: number[]}}
+ */
+export function normalizeGuides(raw) {
+  const source = isPlainObject(raw) ? raw : {}
+  const axis = (value) => {
+    const list = Array.isArray(value) ? value : []
+    const out = []
+    for (const item of list) {
+      const n = num(item, null)
+      if (n === null) continue
+      const rounded = Math.round(n * 100) / 100
+      if (!out.includes(rounded)) out.push(rounded)
+    }
+    out.sort((a, b) => a - b)
+    return out.slice(0, GUIDE_LIMIT)
+  }
+  return { x: axis(source.x), y: axis(source.y) }
+}
+
+/** Есть ли в документе хоть одна направляющая. */
+export function hasGuides(guides) {
+  const normalized = normalizeGuides(guides)
+  return normalized.x.length > 0 || normalized.y.length > 0
+}
+
+/**
+ * Канонический документ: формат, версия, токены, компоненты, направляющие, корень.
  *
  * @param {object} doc Сырой документ.
  * @param {string} fallbackId id, если в документе его нет.
@@ -365,7 +409,7 @@ export function normalizeDoc(doc, fallbackId = 'canvas') {
       components[key] = normalizeComponent(key, value)
     }
   }
-  return {
+  const normalized = {
     format: DOC_FORMAT,
     version: DOC_VERSION,
     id,
@@ -377,24 +421,78 @@ export function normalizeDoc(doc, fallbackId = 'canvas') {
     components,
     root,
   }
+  const guides = normalizeGuides(raw.guides)
+  if (hasGuides(guides)) normalized.guides = guides
+  return normalized
 }
 
-/** Канонический компонент: ключ, имя, шаблон-узел, описанные свойства. */
+/**
+ * Канонический патч параметров вариации: сохраняются только названные поля.
+ *
+ * `normalizeProps` дополняет пропущенное значениями по умолчанию — для
+ * объявления это верно, а для патча вариации разрушительно: `{ label: { default:
+ * 'Основная' } }` получило бы `target: 'root'` и перебило бы цель, объявленную у
+ * компонента.
+ */
+function normalizePropsPatch(raw) {
+  const props = {}
+  if (!isPlainObject(raw)) return props
+  for (const [name, spec] of Object.entries(raw)) {
+    if (!ID_RE.test(name) || !isPlainObject(spec)) continue
+    const patch = {}
+    if (PROP_TYPES.includes(spec.type)) patch.type = spec.type
+    if (spec.default !== undefined) patch.default = spec.default
+    if (typeof spec.description === 'string') patch.description = spec.description
+    if (typeof spec.target === 'string' && spec.target !== '') patch.target = spec.target
+    if (typeof spec.property === 'string' && spec.property !== '') patch.property = spec.property
+    props[name] = patch
+  }
+  return props
+}
+
+/** Типы объявленных параметров — те же, что понимает панель. */
+export const PROP_TYPES = ['text', 'color', 'number', 'boolean', 'token']
+
+/** Канонические объявленные параметры: тип, значение, цель и свойство. */
+function normalizeProps(raw) {
+  const props = {}
+  if (!isPlainObject(raw)) return props
+  for (const [name, spec] of Object.entries(raw)) {
+    if (!ID_RE.test(name)) continue
+    const s = isPlainObject(spec) ? spec : {}
+    props[name] = {
+      type: PROP_TYPES.includes(s.type) ? s.type : 'text',
+      default: s.default ?? (s.type === 'number' ? 0 : s.type === 'boolean' ? false : ''),
+      description: typeof s.description === 'string' ? s.description : '',
+      target: typeof s.target === 'string' && s.target !== '' ? s.target : 'root',
+      property: typeof s.property === 'string' && s.property !== '' ? s.property : defaultPropProperty(s.type),
+    }
+  }
+  return props
+}
+
+/**
+ * Канонический компонент: ключ, имя, шаблон-узел, описанные свойства, вариации.
+ *
+ * Вариация (`variants[name]`) наследует шаблон и параметры компонента и может
+ * заменить шаблон целиком (`node`) или поля отдельных параметров (`props`).
+ * Так «primary» и «secondary» остаются одним компонентом с общим списком
+ * параметров, а не двумя независимыми: инстанс при переключении вариации не
+ * теряет переопределения.
+ */
 export function normalizeComponent(key, value) {
   const raw = isPlainObject(value) ? value : {}
   const node = normalizeNode({ ...(isPlainObject(raw.node) ? raw.node : {}), x: 0, y: 0 })
-  const props = {}
-  if (isPlainObject(raw.props)) {
-    for (const [name, spec] of Object.entries(raw.props)) {
-      if (!ID_RE.test(name)) continue
-      const s = isPlainObject(spec) ? spec : {}
-      props[name] = {
-        type: ['text', 'color', 'number', 'boolean', 'token'].includes(s.type) ? s.type : 'text',
-        default: s.default ?? (s.type === 'number' ? 0 : s.type === 'boolean' ? false : ''),
-        description: typeof s.description === 'string' ? s.description : '',
-        target: typeof s.target === 'string' && s.target !== '' ? s.target : 'root',
-        property: typeof s.property === 'string' && s.property !== '' ? s.property : defaultPropProperty(s.type),
-      }
+  const variants = {}
+  if (isPlainObject(raw.variants)) {
+    for (const [name, spec] of Object.entries(raw.variants)) {
+      if (!ID_RE.test(name) || !isPlainObject(spec)) continue
+      const variant = {}
+      if (typeof spec.name === 'string' && spec.name !== '') variant.name = spec.name
+      if (typeof spec.description === 'string' && spec.description !== '') variant.description = spec.description
+      if (isPlainObject(spec.node)) variant.node = normalizeNode({ ...spec.node, x: 0, y: 0 })
+      if (isPlainObject(spec.props)) variant.props = normalizePropsPatch(spec.props)
+      variants[name] = variant
     }
   }
   return {
@@ -402,8 +500,38 @@ export function normalizeComponent(key, value) {
     name: typeof raw.name === 'string' && raw.name !== '' ? raw.name : key,
     description: typeof raw.description === 'string' ? raw.description : '',
     node,
-    props,
+    props: normalizeProps(raw.props),
+    variants,
   }
+}
+
+/**
+ * Действующие параметры компонента с учётом вариации: объявление компонента
+ * плюс поля, переопределённые вариацией.
+ */
+export function componentProps(component, variant) {
+  const base = isPlainObject(component?.props) ? component.props : {}
+  const spec = component?.variants?.[variant]
+  const patch = isPlainObject(spec?.props) ? spec.props : {}
+  const out = {}
+  for (const name of new Set([...Object.keys(base), ...Object.keys(patch)])) {
+    out[name] = { ...(base[name] ?? {}), ...(patch[name] ?? {}) }
+  }
+  return out
+}
+
+/** Шаблон компонента с учётом вариации: вариация заменяет шаблон целиком. */
+export function componentTemplate(component, variant) {
+  const spec = component?.variants?.[variant]
+  const source = isPlainObject(spec?.node) ? spec.node : component?.node
+  return JSON.parse(JSON.stringify(source ?? {}))
+}
+
+/** Имя вариации для подписи: `name` из объявления, иначе сам ключ. */
+export function variantName(component, variant) {
+  const spec = component?.variants?.[variant]
+  if (isPlainObject(spec) && typeof spec.name === 'string' && spec.name !== '') return spec.name
+  return typeof variant === 'string' ? variant : ''
 }
 
 /** Свойство узла, которым управляет объявленный параметр компонента. */
@@ -708,6 +836,15 @@ export function validateDoc(doc, opts = {}) {
           message: `Инстанс «${node.name}» ссылается на несуществующий компонент «${node.component || '—'}».`,
         })
       }
+      if (node.component && components[node.component] && node.variant
+        && !isPlainObject(components[node.component].variants?.[node.variant])) {
+        issues.push({
+          level: 'warn',
+          code: 'missing-variant',
+          node: node.id,
+          message: `Инстанс «${node.name}» ссылается на вариацию «${node.variant}», которой у компонента «${node.component}» нет.`,
+        })
+      }
       if (Array.isArray(node.children) && node.children.length > 0) {
         issues.push({
           level: 'warn',
@@ -966,14 +1103,15 @@ export function expandInstance(doc, instance) {
     base.missing = true
     return base
   }
-  const template = JSON.parse(JSON.stringify(component.node))
-  applyOverrides(template, component, instance.overrides ?? {})
+  const template = componentTemplate(component, instance.variant)
+  applyOverrides(template, component, instance.overrides ?? {}, instance.variant)
   remapIds(template, instance.id)
   const expanded = {
     ...template,
     id: instance.id,
     type: template.type,
     name: instance.name || component.name,
+    variant: instance.variant,
     x: num(instance.x, 0),
     y: num(instance.y, 0),
     w: num(instance.w, num(template.w, 100)),
@@ -1039,9 +1177,10 @@ function remapIds(node, ownerId) {
  * @param {Record<string, unknown>} overrides Переопределения.
  * @returns {object} Тот же корень.
  */
-export function applyOverrides(root, component, overrides) {
+export function applyOverrides(root, component, overrides, variant) {
+  const specs = componentProps(component, variant)
   for (const [key, value] of Object.entries(overrides ?? {})) {
-    const spec = component?.props?.[key]
+    const spec = specs[key]
     if (spec) {
       const target = resolveTarget(root, spec.target)
       if (target) setPath(target, spec.property ?? defaultPropProperty(spec.type), value)

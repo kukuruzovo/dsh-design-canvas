@@ -1,0 +1,163 @@
+/**
+ * Тема автономного редактора макетов.
+ *
+ * `client.js` берёт цвета и границы только из переменных `--dsw-*`: внутри
+ * харнесса их ставит тема DSH, в отдельном окне — этот файл. Значения сняты
+ * с темы харнесса (`@deepseek-ai/dsh-client-ui-theme`: блок `body` — светлая,
+ * `body[data-ds-dark-theme]` — тёмная), поэтому панель выглядит одинаково там
+ * и здесь. Переключается атрибутом `data-theme` на `<html>`.
+ *
+ * Правка значений здесь — правка внешнего вида только автономного окна;
+ * внутри харнесса по-прежнему действует его собственная тема.
+ */
+
+/* --------------------------------------------------- статическая палитра ---- */
+
+:root {
+  --dsw-static-neutral-bluish-00: #fff;
+  --dsw-static-neutral-bluish-50: #f9fafb;
+  --dsw-static-neutral-bluish-100: #ebeef2;
+  --dsw-static-neutral-bluish-150: #e9ecf2;
+  --dsw-static-neutral-bluish-300: #cfd3d6;
+  --dsw-static-neutral-bluish-700: #61666b;
+  --dsw-static-neutral-bluish-750: #43454a;
+  --dsw-static-neutral-bluish-875: #232324;
+  --dsw-static-neutral-bluish-950: #151517;
+  --dsw-static-neutral-bluish-1000: #0f1115;
+  --dsw-static-deepseek-400: #7aaaff;
+  --dsw-static-deepseek-500: #4176e6;
+  --dsw-static-red-400: #f25a5a;
+  --dsw-static-red-600: #ec1313;
+  --dsw-static-amber-500: #f59e0b;
+
+  /* ------------------------------------------------ светлая тема (как body) -- */
+  color-scheme: light;
+  --dsw-alias-bg-base: var(--dsw-static-neutral-bluish-00);
+  --dsw-alias-bg-layer-1: var(--dsw-static-neutral-bluish-00);
+  --dsw-alias-bg-overlay: var(--dsw-static-neutral-bluish-150);
+  --dsw-alias-border-l1: #0000000a;
+  --dsw-alias-border-l2: #0000001a;
+  --dsw-alias-brand-primary: var(--dsw-static-neutral-bluish-1000);
+  --dsw-alias-button-primary-fill: var(--dsw-alias-brand-primary);
+  --dsw-alias-button-primary-hover: var(--dsw-static-neutral-bluish-750);
+  --dsw-alias-interactive-bg-active: #2631481a;
+  --dsw-alias-interactive-bg-hover: #2631480f;
+  --dsw-alias-label-primary: var(--dsw-static-neutral-bluish-1000);
+  --dsw-alias-label-primary-foreground: var(--dsw-static-neutral-bluish-00);
+  --dsw-alias-label-secondary: var(--dsw-static-neutral-bluish-700);
+  --dsw-alias-link: var(--dsw-static-deepseek-500);
+  --dsw-alias-state-error-primary: var(--dsw-static-red-600);
+  --dsw-alias-state-warn-primary: var(--dsw-static-amber-500);
+}
+
+/* -------------------------------------------------------- тёмная тема ---- */
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --dsw-alias-bg-base: var(--dsw-static-neutral-bluish-950);
+  --dsw-alias-bg-layer-1: var(--dsw-static-neutral-bluish-875);
+  --dsw-alias-bg-overlay: var(--dsw-static-neutral-bluish-700);
+  --dsw-alias-border-l1: #ffffff0f;
+  --dsw-alias-border-l2: #ffffff1f;
+  --dsw-alias-brand-primary: var(--dsw-static-neutral-bluish-50);
+  --dsw-alias-button-primary-fill: var(--dsw-alias-brand-primary);
+  --dsw-alias-button-primary-hover: var(--dsw-static-neutral-bluish-100);
+  --dsw-alias-interactive-bg-active: #ffffff24;
+  --dsw-alias-interactive-bg-hover: #ffffff14;
+  --dsw-alias-label-primary: var(--dsw-static-neutral-bluish-50);
+  --dsw-alias-label-primary-foreground: var(--dsw-static-neutral-bluish-1000);
+  --dsw-alias-label-secondary: var(--dsw-static-neutral-bluish-300);
+  --dsw-alias-link: var(--dsw-static-deepseek-400);
+  --dsw-alias-state-error-primary: var(--dsw-static-red-400);
+  --dsw-alias-state-warn-primary: var(--dsw-static-amber-500);
+}
+
+/* ------------------------------------------------------------- оболочка ---- */
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.shell-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.shell-title {
+  font-weight: 600;
+}
+
+.shell-note {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11.5px;
+}
+
+.shell-spacer {
+  flex: 1;
+}
+
+.shell-btn {
+  border: 1px solid var(--dsw-alias-border-l1);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  border-radius: 6px;
+  padding: 3px 9px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.shell-btn:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.shell-btn:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
+}
+
+.shell-app {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell-error {
+  margin: 24px auto;
+  max-width: 720px;
+  padding: 14px 16px;
+  border: 1px solid var(--dsw-alias-state-error-primary);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.shell-error pre {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11.5px;
+}

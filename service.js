@@ -153,6 +153,7 @@ function componentSummaries(doc) {
     h: component.node?.h,
     nodes: countNodes(component.node ?? {}),
     props: component.props,
+    variants: Object.keys(component.variants ?? {}).length,
     instances: countInstances(doc, component.key),
   }))
 }
@@ -410,10 +411,23 @@ export async function componentsView(projectRef, canvasId, args = {}) {
       op: 'define-component',
       key: args.key,
       from: args.from,
+      node: args.node,
       name: args.name,
       description: args.description,
       props: args.props,
       convert: args.convert !== false,
+    }], { expectRev: args.expectRev ?? rev })
+    return { canvas: canvasId, rev: result.rev, applied: result.applied, written: true }
+  }
+  if (action === 'update') {
+    if (!args.key) throw new ServiceError(400, 'Для action=update нужен «key».')
+    const result = await applyBatch(projectRef, canvasId, [{
+      op: 'update-component',
+      key: args.key,
+      name: args.name,
+      description: args.description,
+      props: args.props,
+      node: args.node,
     }], { expectRev: args.expectRev ?? rev })
     return { canvas: canvasId, rev: result.rev, applied: result.applied, written: true }
   }
@@ -443,7 +457,7 @@ export async function componentsView(projectRef, canvasId, args = {}) {
     const result = await applyBatch(projectRef, canvasId, [{ op: 'detach', id: args.from }], { expectRev: args.expectRev ?? rev })
     return { canvas: canvasId, rev: result.rev, applied: result.applied, written: true }
   }
-  throw new ServiceError(400, `Неизвестное действие «${action}»: list | get | define | delete | instantiate | detach.`)
+  throw new ServiceError(400, `Неизвестное действие «${action}»: list | get | define | update | delete | instantiate | detach.`)
 }
 
 /**

@@ -1,0 +1,33 @@
+<!doctype html>
+<!--
+  Страница автономного редактора макетов.
+
+  Порядок скриптов обязателен: сначала React, затем `shell.js` — он ставит
+  шим `window.__ModuleLoader__`, которого ждёт клиентская половина плагина, —
+  и только потом сам `client.js`. Оболочка поднимается на `DOMContentLoaded`,
+  то есть уже после того, как модуль панели зарегистрировался.
+-->
+<html lang="ru" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Макеты — автономный редактор</title>
+    <link rel="icon" href="/icon.svg" />
+    <link rel="stylesheet" href="/theme.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="shell-bar">
+        <span class="shell-title">Макеты</span>
+        <span class="shell-note">автономный редактор · без харнесса</span>
+        <span class="shell-spacer"></span>
+        <button type="button" class="shell-btn" id="shell-theme">Тема</button>
+      </header>
+      <main class="shell-app" id="shell-app"></main>
+    </div>
+    <script src="/vendor/react.js"></script>
+    <script src="/vendor/react-dom.js"></script>
+    <script src="/shell.js"></script>
+    <script src="/client.js"></script>
+  </body>
+</html>

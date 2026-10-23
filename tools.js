@@ -38,7 +38,7 @@ function formatBytes(n) {
 /** Общие параметры адресации холста. */
 const PROJECT_PARAM = {
   type: 'string',
-  description: 'id проекта из design_projects (например `quizforge`) или путь к его корню. По умолчанию — проект текущего каталога.',
+  description: 'id проекта из design_projects (например `my-app`) или путь к его корню. По умолчанию — проект текущего каталога.',
 }
 
 const CANVAS_PARAM = {
@@ -53,17 +53,19 @@ const OP_HELP = {
   move: '{id, parent?, index?, after?} — перенести узел (`after` — id соседа, за которым вставить); без `parent` узел остаётся у того же родителя и меняет порядок.',
   delete: '{id|ids} — удалить узлы с поддеревьями.',
   duplicate: '{id|ids, count?, offsetX?, offsetY?, parent?} — копия рядом.',
-  group: '{ids, name?} — обернуть узлы в группу.',
+  group: '{ids, name?, as?} — обернуть узлы в контейнер: `as: frame` даёт фрейм по габаритам (по умолчанию группа).',
   ungroup: '{id} — развернуть группу обратно в родителя.',
   reorder: '{id, index|direction} — direction: front | back | up | down.',
   'set-tokens': '{tokens, remove?, replace?} — добавить, заменить или удалить токены (remove — пути вида color.bg, text.h1.size).',
-  'define-component': '{key, from, name?, description?, props?, convert?} — сделать узел компонентом.',
+  'define-component': '{key, from?, node?, name?, description?, props?, convert?} — сделать узел компонентом: `from` берёт узел холста, `node` — готовый шаблон.',
+  'update-component': '{key, name?, description?, props?, node?} — правка компонента: props сливаются по имени (null убирает), node заменяет шаблон.',
   'delete-component': '{key, detach?} — убрать компонент (инстансы по умолчанию детачатся).',
   instantiate: '{component, parent, x?, y?, w?, h?, name?, overrides?, index?, after?} — поставить инстанс компонента.',
   detach: '{id} — превратить инстанс в обычный узел.',
   'set-canvas': '{name?, device?} — имя и устройство холста (mobile | tablet | desktop | component; неизвестное значение — ошибка).',
   align: '{ids, mode, axis?} — mode: left | center | right | top | middle | bottom; axis: x | y (иначе выводится из mode, противоречие — ошибка).',
   distribute: '{ids, axis?} — axis: x | y (по умолчанию x), равные промежутки; нужно минимум три узла.',
+  'set-guides': '{x?, y?, clear?} — направляющие холста: `x` — вертикальные на этой координате, `y` — горизонтальные; ось заменяется целиком, `clear` убирает разметку.',
 }
 
 /**
@@ -365,14 +367,16 @@ export function registerTools(ctx, config = {}) {
       'Компонент объявляется из готового узла (action=define, from=<id>) и дальше ставится инстансами (action=instantiate).',
       'Инстанс — живая ссылка: правка компонента обновляет все инстансы. Переопределения инстанса задаются через overrides и объявленные параметры компонента.',
       'Параметр компонента описывается как { type, default, target, property }: target — «root», «#Имя узла», «text» или путь внутри шаблона (`children[0].label`), property — путь внутри узла (text.value, style.fill, w).',
-      'Действия: list, get, define, delete, instantiate, detach.',
+      'Действия: list, get, define, update, delete, instantiate, detach.',
+      'update правит имя, описание, параметры и шаблон существующего компонента: props сливаются по имени параметра (null убирает), node заменяет шаблон целиком.',
     ].join('\n'),
     parameters: {
       type: 'object',
       properties: {
         project: PROJECT_PARAM,
         canvas: CANVAS_PARAM,
-        action: { type: 'string', enum: ['list', 'get', 'define', 'delete', 'instantiate', 'detach'], description: 'Действие; по умолчанию list.' },
+        action: { type: 'string', enum: ['list', 'get', 'define', 'update', 'delete', 'instantiate', 'detach'], description: 'Действие; по умолчанию list.' },
+        node: { type: 'object', description: 'update: новый шаблон узла компонента (координаты 0/0, дети внутри).' },
         key: { type: 'string', description: 'Ключ компонента (латиница, цифры, «-», «_»).' },
         from: { type: 'string', description: 'id узла: основа для define или инстанс для detach.' },
         name: { type: 'string', description: 'Имя компонента.' },

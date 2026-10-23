@@ -18,6 +18,7 @@ import {
   NODE_TYPES,
   childrenOf,
   cloneDoc,
+  componentTemplate,
   defaultNode,
   expandInstance,
   findNode,
@@ -29,6 +30,7 @@ import {
   newId,
   normalizeComponent,
   normalizeDoc,
+  normalizeGuides,
   normalizeNode,
   num,
   walk,
@@ -50,8 +52,8 @@ function fail(message, index, op) {
 /** Все имена операций, которые понимает движок. */
 export const OPS = [
   'add', 'update', 'move', 'delete', 'duplicate', 'group', 'ungroup', 'reorder',
-  'set-tokens', 'define-component', 'delete-component', 'instantiate', 'detach',
-  'set-canvas', 'align', 'distribute',
+  'set-tokens', 'define-component', 'update-component', 'delete-component', 'instantiate', 'detach',
+  'set-canvas', 'align', 'distribute', 'set-guides',
 ]
 
 /**
@@ -98,12 +100,14 @@ function applyOne(doc, op) {
     case 'reorder': return opReorder(doc, op)
     case 'set-tokens': return opSetTokens(doc, op)
     case 'define-component': return opDefineComponent(doc, op)
+    case 'update-component': return opUpdateComponent(doc, op)
     case 'delete-component': return opDeleteComponent(doc, op)
     case 'instantiate': return opInstantiate(doc, op)
     case 'detach': return opDetach(doc, op)
     case 'set-canvas': return opSetCanvas(doc, op)
     case 'align': return opAlign(doc, op)
     case 'distribute': return opDistribute(doc, op)
+    case 'set-guides': return opSetGuides(doc, op)
     default: fail(`Операция «${op.op}» не реализована.`)
   }
 }
@@ -194,10 +198,14 @@ function opDuplicate(doc, op) {
   return { ids: out }
 }
 
-/** `group` — обернуть выделение в группу (по общему bounding box). */
+/** `group` — обернуть выделение в группу или фрейм (по общему bounding box). */
 function opGroup(doc, op) {
   const ids = Array.isArray(op.ids) ? op.ids : []
   if (ids.length < 1) fail('Для group нужен список «ids».')
+  if (op.as !== undefined && op.as !== 'group' && op.as !== 'frame') {
+    fail(`Неизвестный «as»: ${op.as}. Допустимо group или frame.`)
+  }
+  const kind = op.as === 'frame' ? 'frame' : 'group'
   const nodes = ids.map((id) => requireNode(doc, id))
   const parent = findParent(doc.root, nodes[0].id)
   if (!parent) fail('Не найден общий родитель для группировки.')
@@ -210,8 +218,8 @@ function opGroup(doc, op) {
   const minY = Math.min(...nodes.map((node) => num(node.y, 0)))
   const maxX = Math.max(...nodes.map((node) => num(node.x, 0) + num(node.w, 0)))
   const maxY = Math.max(...nodes.map((node) => num(node.y, 0) + num(node.h, 0)))
-  const group = defaultNode('group', {
-    name: op.name ?? 'Group',
+  const group = defaultNode(kind, {
+    name: op.name ?? (kind === 'frame' ? 'Frame' : 'Group'),
     x: minX,
     y: minY,
     w: maxX - minX,
@@ -326,22 +334,26 @@ function opDefineComponent(doc, op) {
   const key = typeof op.key === 'string' && op.key !== '' ? op.key : null
   if (!key) fail('Нужен «key» компонента.')
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(key)) fail('«key» компонента: буквы, цифры, «_», «-», до 64 символов.')
-  const source = requireNode(doc, op.from)
-  if (source.id === 'root') fail('Корень холста не может быть компонентом — возьми фрейм внутри него.')
-  const template = JSON.parse(JSON.stringify(source))
+  // Шаблон можно взять из узла холста (`from`) или задать напрямую (`node`):
+  // второе нужно панели, чтобы клонировать компонент, не ставя его на холст.
+  if (op.node !== undefined && !isPlainObject(op.node)) fail('«node» — объект-шаблон узла.')
+  if (op.node === undefined && !op.from) fail('Нужен «from» (id узла-основы) или «node» (готовый шаблон).')
+  const source = op.node === undefined ? requireNode(doc, op.from) : null
+  if (source && source.id === 'root') fail('Корень холста не может быть компонентом — возьми фрейм внутри него.')
+  const template = JSON.parse(JSON.stringify(source ?? op.node))
   template.x = 0
   template.y = 0
   reid(template)
   const props = isPlainObject(op.props) ? op.props : inferProps(template)
   const component = normalizeComponent(key, {
     key,
-    name: op.name ?? source.name ?? key,
+    name: op.name ?? source?.name ?? template.name ?? key,
     description: op.description ?? '',
     node: template,
     props,
   })
   doc.components[key] = component
-  if (op.convert !== false) {
+  if (source && op.convert !== false) {
     const instance = defaultNode('instance', {
       id: source.id,
       name: component.name,
@@ -359,6 +371,65 @@ function opDefineComponent(doc, op) {
     }
   }
   return { key, props: Object.keys(component.props) }
+}
+
+/**
+ * `update-component` — правка существующего компонента без пересоздания.
+ *
+ * `define-component` перезаписывает ключ целиком и молча теряет прежний шаблон,
+ * поэтому правка имени, описания и параметров идёт отдельной операцией. `props`
+ * сливаются по имени параметра, а сам параметр — по полям (как патч в
+ * `update`): `{ label: { default: 'ОК' } }` меняет только значение по умолчанию и
+ * не теряет `target`. Значение `null` убирает параметр, `node` заменяет шаблон
+ * целиком. Собранный компонент проходит `normalizeComponent`,
+ * то есть мусор в типах и `target` чинится теми же правилами, что при объявлении.
+ */
+function opUpdateComponent(doc, op) {
+  const key = op.key
+  const component = doc.components?.[key]
+  if (!component) fail(`Компонент «${key}» не найден.`)
+  if (op.name !== undefined && (typeof op.name !== 'string' || op.name === '')) {
+    fail('«name» компонента — непустая строка.')
+  }
+  if (op.description !== undefined && typeof op.description !== 'string') {
+    fail('«description» компонента — строка.')
+  }
+  if (op.props !== undefined && !isPlainObject(op.props)) fail('«props» — объект параметров.')
+  if (op.variants !== undefined && !isPlainObject(op.variants)) fail('«variants» — объект вариаций.')
+  if (op.node !== undefined && !isPlainObject(op.node)) fail('«node» — объект-шаблон узла.')
+  const props = { ...component.props }
+  for (const [name, spec] of Object.entries(op.props ?? {})) {
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(name)) fail(`Имя параметра «${name}»: буквы, цифры, «_», «-», до 64 символов.`)
+    if (spec === null) delete props[name]
+    else if (isPlainObject(spec)) props[name] = { ...(isPlainObject(props[name]) ? props[name] : {}), ...spec }
+    else fail(`Параметр «${name}» — объект или null.`)
+  }
+  const variants = { ...component.variants }
+  for (const [name, spec] of Object.entries(op.variants ?? {})) {
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(name)) fail(`Имя вариации «${name}»: буквы, цифры, «_», «-», до 64 символов.`)
+    if (spec === null) {
+      delete variants[name]
+      continue
+    }
+    if (!isPlainObject(spec)) fail(`Вариация «${name}» — объект или null.`)
+    const current = isPlainObject(variants[name]) ? variants[name] : {}
+    const next = { ...current, ...spec }
+    if (isPlainObject(current.props) && isPlainObject(spec.props)) next.props = { ...current.props, ...spec.props }
+    variants[name] = next
+  }
+  doc.components[key] = normalizeComponent(key, {
+    name: op.name ?? component.name,
+    description: op.description ?? component.description,
+    node: op.node ?? component.node,
+    props,
+    variants,
+  })
+  return {
+    key,
+    name: doc.components[key].name,
+    props: Object.keys(doc.components[key].props),
+    variants: Object.keys(doc.components[key].variants),
+  }
 }
 
 /** `delete-component` — убрать компонент; инстансы либо детач, либо ломаются. */
@@ -382,17 +453,20 @@ function opInstantiate(doc, op) {
   const component = doc.components?.[key]
   if (!component) fail(`Компонент «${key}» не найден.`)
   const parent = requireContainer(doc, op.parent)
+  // Размер берётся из шаблона вариации: у «большой» и «малой» кнопки он разный.
+  const template = componentTemplate(component, op.variant)
   const instance = defaultNode('instance', {
     name: op.name ?? component.name,
     x: num(op.x, 0),
     y: num(op.y, 0),
-    w: num(op.w, num(component.node.w, 100)),
-    h: num(op.h, num(component.node.h, 100)),
+    w: num(op.w, num(template.w, 100)),
+    h: num(op.h, num(template.h, 100)),
     component: key,
+    variant: typeof op.variant === 'string' && op.variant !== '' ? op.variant : undefined,
     overrides: isPlainObject(op.overrides) ? op.overrides : {},
   })
   insertAt(parent, instance, op.index, op.after)
-  return { id: instance.id, component: key }
+  return { id: instance.id, component: key, variant: instance.variant }
 }
 
 /** `detach` — заменить инстанс обычным узлом с развёрнутым содержимым. */
@@ -441,6 +515,40 @@ function opSetCanvas(doc, op) {
     doc.device = op.device
   }
   return { id: doc.id, name: doc.name, device: doc.device }
+}
+
+/**
+ * `set-guides` — задать направляющие холста.
+ *
+ * `x`/`y` заменяют свою ось целиком, а не дополняют её: агент получает
+ * предсказуемый результат без чтения текущего состояния, а панель и так
+ * считает список локально. `clear: true` убирает разметку вовсе — поле
+ * исчезает из файла, как и у холста, который направляющих не знал.
+ *
+ * @param {object} doc Документ (мутируется).
+ * @param {object} op Операция.
+ * @returns {{x: number, y: number}} Сколько направляющих осталось на каждой оси.
+ */
+function opSetGuides(doc, op) {
+  if (op.clear === true && op.x === undefined && op.y === undefined) {
+    delete doc.guides
+    return { x: 0, y: 0 }
+  }
+  for (const axis of ['x', 'y']) {
+    if (op[axis] === undefined) continue
+    if (!Array.isArray(op[axis])) fail(`«${axis}» направляющих — массив координат.`)
+    for (const value of op[axis]) {
+      if (num(value, null) === null) fail(`Координата направляющей «${String(value)}» — не число.`)
+    }
+  }
+  const current = normalizeGuides(doc.guides)
+  const guides = normalizeGuides({
+    x: op.x === undefined ? current.x : op.x,
+    y: op.y === undefined ? current.y : op.y,
+  })
+  if (guides.x.length === 0 && guides.y.length === 0) delete doc.guides
+  else doc.guides = guides
+  return { x: guides.x.length, y: guides.y.length }
 }
 
 /** `align` — выровнять узлы внутри их родителя. */
